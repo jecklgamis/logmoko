@@ -1,12 +1,10 @@
 ## Process this file with automake to produce Makefile.in
 
-noinst_PROGRAMS = my_app
+noinst_PROGRAMS = my_app socket_log_handler
 my_app_SOURCES = my_app.c
-    
-LDADD =	$(top_srcdir)/src/main/liblogmoko.a
+socket_log_handler_SOURCES = socket_log_handler.c
 
-if DEBUG
-AM_CPPFLAGS  =  
-else
-AM_CPPFLAGS  = 
-endif
+clean-local:
+	rm -f *.log    
+
+LDADD =	../../src/main/liblogmoko.a

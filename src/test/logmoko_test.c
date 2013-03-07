@@ -1,6 +1,7 @@
-#include "logmoko.h"
-#include <testmoko.h>
+#include <stdlib.h>
 #include <pthread.h>
+#include "logmoko.h"
+#include "testmoko.h"
 
 /** Verify normal creation and destruction of logger 
  *  Verify default log level

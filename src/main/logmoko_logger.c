@@ -42,6 +42,7 @@ LMK_API lmk_logger * lmk_get_logger(const char *name) {
             logger->name = name;
             lmk_init_list(&logger->handler_ref_list);
             lmk_insert_list(&g_lmk_logger_list, &logger->link);
+            lmk_attach_log_handler(logger, lmk_get_console_log_handler());
         }
     }
     return logger;

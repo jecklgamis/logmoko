@@ -50,7 +50,7 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = x86_64-apple-darwin10.8.0
 host_triplet = x86_64-apple-darwin10.8.0
-noinst_PROGRAMS = my_app$(EXEEXT)
+noinst_PROGRAMS = my_app$(EXEEXT) socket_log_handler$(EXEEXT)
 subdir = src/examples
 DIST_COMMON = $(srcdir)/Makefile.in $(srcdir)/Makefile.am \
 	$(top_srcdir)/depcomp
@@ -66,7 +66,11 @@ PROGRAMS = $(noinst_PROGRAMS)
 am_my_app_OBJECTS = my_app.$(OBJEXT)
 my_app_OBJECTS = $(am_my_app_OBJECTS)
 my_app_LDADD = $(LDADD)
-my_app_DEPENDENCIES = $(top_srcdir)/src/main/liblogmoko.a
+my_app_DEPENDENCIES = ../../src/main/liblogmoko.a
+am_socket_log_handler_OBJECTS = socket_log_handler.$(OBJEXT)
+socket_log_handler_OBJECTS = $(am_socket_log_handler_OBJECTS)
+socket_log_handler_LDADD = $(LDADD)
+socket_log_handler_DEPENDENCIES = ../../src/main/liblogmoko.a
 AM_V_P = $(am__v_P_$(V))
 am__v_P_ = $(am__v_P_$(AM_DEFAULT_VERBOSITY))
 am__v_P_0 = false
@@ -95,8 +99,8 @@ AM_V_CCLD = $(am__v_CCLD_$(V))
 am__v_CCLD_ = $(am__v_CCLD_$(AM_DEFAULT_VERBOSITY))
 am__v_CCLD_0 = @echo "  CCLD    " $@;
 am__v_CCLD_1 = 
-SOURCES = $(my_app_SOURCES)
-DIST_SOURCES = $(my_app_SOURCES)
+SOURCES = $(my_app_SOURCES) $(socket_log_handler_SOURCES)
+DIST_SOURCES = $(my_app_SOURCES) $(socket_log_handler_SOURCES)
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
@@ -122,12 +126,12 @@ am__define_uniq_tagged_files = \
 ETAGS = etags
 CTAGS = ctags
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
-ACLOCAL = ${SHELL} /export/wspace-idea/logmoko-c3/missing aclocal-1.13
+ACLOCAL = ${SHELL} /export/wspace-idea/logmoko/missing aclocal-1.13
 AMTAR = $${TAR-tar}
 AM_DEFAULT_VERBOSITY = 1
-AUTOCONF = ${SHELL} /export/wspace-idea/logmoko-c3/missing autoconf
-AUTOHEADER = ${SHELL} /export/wspace-idea/logmoko-c3/missing autoheader
-AUTOMAKE = ${SHELL} /export/wspace-idea/logmoko-c3/missing automake-1.13
+AUTOCONF = ${SHELL} /export/wspace-idea/logmoko/missing autoconf
+AUTOHEADER = ${SHELL} /export/wspace-idea/logmoko/missing autoheader
+AUTOMAKE = ${SHELL} /export/wspace-idea/logmoko/missing automake-1.13
 AWK = gawk
 CC = gcc
 CCDEPMODE = depmode=gcc3
@@ -152,7 +156,7 @@ LDFLAGS =
 LIBOBJS = 
 LIBS = 
 LTLIBOBJS = 
-MAKEINFO = ${SHELL} /export/wspace-idea/logmoko-c3/missing makeinfo
+MAKEINFO = ${SHELL} /export/wspace-idea/logmoko/missing makeinfo
 MKDIR_P = ../.././install-sh -c -d
 OBJEXT = o
 PACKAGE = logmoko
@@ -168,10 +172,10 @@ SET_MAKE =
 SHELL = /bin/sh
 STRIP = 
 VERSION = 1.0
-abs_builddir = /export/wspace-idea/logmoko-c3/src/examples
-abs_srcdir = /export/wspace-idea/logmoko-c3/src/examples
-abs_top_builddir = /export/wspace-idea/logmoko-c3
-abs_top_srcdir = /export/wspace-idea/logmoko-c3
+abs_builddir = /export/wspace-idea/logmoko/src/examples
+abs_srcdir = /export/wspace-idea/logmoko/src/examples
+abs_top_builddir = /export/wspace-idea/logmoko
+abs_top_srcdir = /export/wspace-idea/logmoko
 ac_ct_CC = gcc
 am__include = include
 am__leading_dot = .
@@ -198,7 +202,7 @@ host_vendor = apple
 htmldir = ${docdir}
 includedir = ${prefix}/include
 infodir = ${datarootdir}/info
-install_sh = ${SHELL} /export/wspace-idea/logmoko-c3/install-sh
+install_sh = ${SHELL} /export/wspace-idea/logmoko/install-sh
 libdir = ${exec_prefix}/lib
 libexecdir = ${exec_prefix}/libexec
 localedir = ${datarootdir}/locale
@@ -219,9 +223,8 @@ top_build_prefix = ../../
 top_builddir = ../..
 top_srcdir = ../..
 my_app_SOURCES = my_app.c
-LDADD = $(top_srcdir)/src/main/liblogmoko.a
-AM_CPPFLAGS = 
-#AM_CPPFLAGS = 
+socket_log_handler_SOURCES = socket_log_handler.c
+LDADD = ../../src/main/liblogmoko.a
 all: all-am
 
 .SUFFIXES:
@@ -262,6 +265,9 @@ clean-noinstPROGRAMS:
 my_app$(EXEEXT): $(my_app_OBJECTS) $(my_app_DEPENDENCIES) $(EXTRA_my_app_DEPENDENCIES) 
 	@rm -f my_app$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(my_app_OBJECTS) $(my_app_LDADD) $(LIBS)
+socket_log_handler$(EXEEXT): $(socket_log_handler_OBJECTS) $(socket_log_handler_DEPENDENCIES) $(EXTRA_socket_log_handler_DEPENDENCIES) 
+	@rm -f socket_log_handler$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(socket_log_handler_OBJECTS) $(socket_log_handler_LDADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -270,6 +276,7 @@ distclean-compile:
 	-rm -f *.tab.c
 
 include ./$(DEPDIR)/my_app.Po
+include ./$(DEPDIR)/socket_log_handler.Po
 
 .c.o:
 	$(AM_V_CC)$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
@@ -403,7 +410,8 @@ maintainer-clean-generic:
 	@echo "it deletes files that may require special tools to rebuild."
 clean: clean-am
 
-clean-am: clean-generic clean-noinstPROGRAMS mostlyclean-am
+clean-am: clean-generic clean-local clean-noinstPROGRAMS \
+	mostlyclean-am
 
 distclean: distclean-am
 	-rm -rf ./$(DEPDIR)
@@ -473,18 +481,21 @@ uninstall-am:
 .MAKE: install-am install-strip
 
 .PHONY: CTAGS GTAGS TAGS all all-am check check-am clean clean-generic \
-	clean-noinstPROGRAMS cscopelist-am ctags ctags-am distclean \
-	distclean-compile distclean-generic distclean-tags distdir dvi \
-	dvi-am html html-am info info-am install install-am \
-	install-data install-data-am install-dvi install-dvi-am \
-	install-exec install-exec-am install-html install-html-am \
-	install-info install-info-am install-man install-pdf \
-	install-pdf-am install-ps install-ps-am install-strip \
-	installcheck installcheck-am installdirs maintainer-clean \
-	maintainer-clean-generic mostlyclean mostlyclean-compile \
-	mostlyclean-generic pdf pdf-am ps ps-am tags tags-am uninstall \
-	uninstall-am
+	clean-local clean-noinstPROGRAMS cscopelist-am ctags ctags-am \
+	distclean distclean-compile distclean-generic distclean-tags \
+	distdir dvi dvi-am html html-am info info-am install \
+	install-am install-data install-data-am install-dvi \
+	install-dvi-am install-exec install-exec-am install-html \
+	install-html-am install-info install-info-am install-man \
+	install-pdf install-pdf-am install-ps install-ps-am \
+	install-strip installcheck installcheck-am installdirs \
+	maintainer-clean maintainer-clean-generic mostlyclean \
+	mostlyclean-compile mostlyclean-generic pdf pdf-am ps ps-am \
+	tags tags-am uninstall uninstall-am
 
+
+clean-local:
+	rm -f *.log    
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

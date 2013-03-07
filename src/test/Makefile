@@ -15,6 +15,7 @@
 
 
 
+
 am__make_dryrun = \
   { \
     am__dry=no; \
@@ -53,7 +54,7 @@ host_triplet = x86_64-apple-darwin10.8.0
 noinst_PROGRAMS = logmoko_test$(EXEEXT)
 subdir = src/test
 DIST_COMMON = $(srcdir)/Makefile.in $(srcdir)/Makefile.am \
-	$(top_srcdir)/depcomp
+	$(top_srcdir)/depcomp $(noinst_HEADERS)
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
@@ -67,7 +68,7 @@ am_logmoko_test_OBJECTS = logmoko_test.$(OBJEXT) testmoko.$(OBJEXT) \
 	testmoko_exception.$(OBJEXT)
 logmoko_test_OBJECTS = $(am_logmoko_test_OBJECTS)
 logmoko_test_LDADD = $(LDADD)
-logmoko_test_DEPENDENCIES = $(top_srcdir)/src/main/liblogmoko.a
+logmoko_test_DEPENDENCIES = ../../src/main/liblogmoko.a
 AM_V_P = $(am__v_P_$(V))
 am__v_P_ = $(am__v_P_$(AM_DEFAULT_VERBOSITY))
 am__v_P_0 = false
@@ -103,6 +104,7 @@ am__can_run_installinfo = \
     n|no|NO) false;; \
     *) (install-info --version) >/dev/null 2>&1;; \
   esac
+HEADERS = $(noinst_HEADERS)
 am__tagged_files = $(HEADERS) $(SOURCES) $(TAGS_FILES) $(LISP)
 # Read a list of newline-separated strings from the standard input,
 # and print each of them once, without duplicates.  Input order is
@@ -123,12 +125,12 @@ am__define_uniq_tagged_files = \
 ETAGS = etags
 CTAGS = ctags
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
-ACLOCAL = ${SHELL} /export/wspace-idea/logmoko-c3/missing aclocal-1.13
+ACLOCAL = ${SHELL} /export/wspace-idea/logmoko/missing aclocal-1.13
 AMTAR = $${TAR-tar}
 AM_DEFAULT_VERBOSITY = 1
-AUTOCONF = ${SHELL} /export/wspace-idea/logmoko-c3/missing autoconf
-AUTOHEADER = ${SHELL} /export/wspace-idea/logmoko-c3/missing autoheader
-AUTOMAKE = ${SHELL} /export/wspace-idea/logmoko-c3/missing automake-1.13
+AUTOCONF = ${SHELL} /export/wspace-idea/logmoko/missing autoconf
+AUTOHEADER = ${SHELL} /export/wspace-idea/logmoko/missing autoheader
+AUTOMAKE = ${SHELL} /export/wspace-idea/logmoko/missing automake-1.13
 AWK = gawk
 CC = gcc
 CCDEPMODE = depmode=gcc3
@@ -153,7 +155,7 @@ LDFLAGS =
 LIBOBJS = 
 LIBS = 
 LTLIBOBJS = 
-MAKEINFO = ${SHELL} /export/wspace-idea/logmoko-c3/missing makeinfo
+MAKEINFO = ${SHELL} /export/wspace-idea/logmoko/missing makeinfo
 MKDIR_P = ../.././install-sh -c -d
 OBJEXT = o
 PACKAGE = logmoko
@@ -169,10 +171,10 @@ SET_MAKE =
 SHELL = /bin/sh
 STRIP = 
 VERSION = 1.0
-abs_builddir = /export/wspace-idea/logmoko-c3/src/test
-abs_srcdir = /export/wspace-idea/logmoko-c3/src/test
-abs_top_builddir = /export/wspace-idea/logmoko-c3
-abs_top_srcdir = /export/wspace-idea/logmoko-c3
+abs_builddir = /export/wspace-idea/logmoko/src/test
+abs_srcdir = /export/wspace-idea/logmoko/src/test
+abs_top_builddir = /export/wspace-idea/logmoko
+abs_top_srcdir = /export/wspace-idea/logmoko
 ac_ct_CC = gcc
 am__include = include
 am__leading_dot = .
@@ -199,7 +201,7 @@ host_vendor = apple
 htmldir = ${docdir}
 includedir = ${prefix}/include
 infodir = ${datarootdir}/info
-install_sh = ${SHELL} /export/wspace-idea/logmoko-c3/install-sh
+install_sh = ${SHELL} /export/wspace-idea/logmoko/install-sh
 libdir = ${exec_prefix}/lib
 libexecdir = ${exec_prefix}/libexec
 localedir = ${datarootdir}/locale
@@ -219,10 +221,10 @@ target_alias =
 top_build_prefix = ../../
 top_builddir = ../..
 top_srcdir = ../..
-logmoko_test_SOURCES = logmoko_test.c testmoko.c testmoko_exception.c
-LDADD = $(top_srcdir)/src/main/liblogmoko.a
-AM_CPPFLAGS = 
-#AM_CPPFLAGS = 
+logmoko_test_SOURCES = logmoko_test.c testmoko.c  testmoko_exception.c  
+noinst_HEADERS = testmoko.h testmoko_exception.h
+LDADD = ../../src/main/liblogmoko.a
+AM_CPPFLAGS = -I $(top_srcdir)/src  -I $(srcdir)
 all: all-am
 
 .SUFFIXES:
@@ -372,7 +374,7 @@ distdir: $(DISTFILES)
 	done
 check-am: all-am
 check: check-am
-all-am: Makefile $(PROGRAMS)
+all-am: Makefile $(PROGRAMS) $(HEADERS)
 installdirs:
 install: install-am
 install-exec: install-exec-am
@@ -406,7 +408,8 @@ maintainer-clean-generic:
 	@echo "it deletes files that may require special tools to rebuild."
 clean: clean-am
 
-clean-am: clean-generic clean-noinstPROGRAMS mostlyclean-am
+clean-am: clean-generic clean-local clean-noinstPROGRAMS \
+	mostlyclean-am
 
 distclean: distclean-am
 	-rm -rf ./$(DEPDIR)
@@ -476,18 +479,24 @@ uninstall-am:
 .MAKE: install-am install-strip
 
 .PHONY: CTAGS GTAGS TAGS all all-am check check-am clean clean-generic \
-	clean-noinstPROGRAMS cscopelist-am ctags ctags-am distclean \
-	distclean-compile distclean-generic distclean-tags distdir dvi \
-	dvi-am html html-am info info-am install install-am \
-	install-data install-data-am install-dvi install-dvi-am \
-	install-exec install-exec-am install-html install-html-am \
-	install-info install-info-am install-man install-pdf \
-	install-pdf-am install-ps install-ps-am install-strip \
-	installcheck installcheck-am installdirs maintainer-clean \
-	maintainer-clean-generic mostlyclean mostlyclean-compile \
-	mostlyclean-generic pdf pdf-am ps ps-am tags tags-am uninstall \
-	uninstall-am
+	clean-local clean-noinstPROGRAMS cscopelist-am ctags ctags-am \
+	distclean distclean-compile distclean-generic distclean-tags \
+	distdir dvi dvi-am html html-am info info-am install \
+	install-am install-data install-data-am install-dvi \
+	install-dvi-am install-exec install-exec-am install-html \
+	install-html-am install-info install-info-am install-man \
+	install-pdf install-pdf-am install-ps install-ps-am \
+	install-strip installcheck installcheck-am installdirs \
+	maintainer-clean maintainer-clean-generic mostlyclean \
+	mostlyclean-compile mostlyclean-generic pdf pdf-am ps ps-am \
+	tags tags-am uninstall uninstall-am
 
+
+check : logmoko_test 
+	./logmoko_test
+
+clean-local:
+	rm -f *.log
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.
