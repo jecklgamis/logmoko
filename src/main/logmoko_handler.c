@@ -40,7 +40,11 @@ void lmk_init_base_log_handler(lmk_log_handler *handler, int type,
     if (handler != NULL) {
         memset(handler, 0, sizeof (lmk_log_handler));
         lmk_init_list(&handler->link);
-        handler->name = name;
+        int name_len = strlen(name);
+        if ((handler->name = lmk_malloc(name_len)) != NULL) {
+            strncpy((void*)handler->name, name, name_len);
+            handler->name[name_len] = '\0';
+        }
         handler->init = init;
         handler->destroy = destroy;
         handler->log_impl = log_impl;
@@ -142,6 +146,9 @@ int lmk_destroy_log_handler(lmk_log_handler **handler_addr) {
     }
     lmk_remove_list(&handler->link);
     lmk_free(handler);
+    if (handler->name != NULL) {
+        lmk_free((void*)handler->name);
+    }
     *handler_addr = NULL;
     return LMK_E_OK;
 }

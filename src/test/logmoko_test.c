@@ -16,6 +16,16 @@ TMK_TEST(lmk_test_create_and_destroy_logger) {
     lmk_destroy();
 }
 
+/* Verify that a console log handler is added by default */
+TMK_TEST(lmk_test_attached_console_log_handler) {
+    lmk_logger *logger = lmk_get_logger("logger");
+    TMK_ASSERT_NOT_NULL(logger);
+    lmk_log_handler *handler = lmk_find_handler(logger, "console");
+    TMK_ASSERT_NOT_NULL(handler);
+    TMK_ASSERT_EQUAL(1, lmk_get_nr_handlers());
+    lmk_dump_loggers();
+}
+
 /** Verify that logging using a null logger is allowed (no exceptions of what kind)
  */
 TMK_TEST(lmk_test_null_logger) {
@@ -348,7 +358,7 @@ TMK_TEST(lmk_test_destroy_loggers) {
     TMK_ASSERT_EQUAL(2, lmk_get_list_size(&logger1->handler_ref_list));
     TMK_ASSERT_EQUAL(2, lmk_get_list_size(&logger2->handler_ref_list));
 
-    TMK_ASSERT_EQUAL(2, clh->nr_logger_ref);
+    TMK_ASSERT_EQUAL(3, clh->nr_logger_ref);
     TMK_ASSERT_EQUAL(2, flh->nr_logger_ref);
 
     TMK_ASSERT_EQUAL(2, lmk_get_nr_handlers());
@@ -487,6 +497,7 @@ TMK_TEST(lmk_test_socket_log_handler) {
 
 TMK_TEST_FUNCTION_TABLE_START(test_function_table)
 TMK_INCLUDE_TEST(lmk_test_create_and_destroy_logger) TMK_INCLUDE_TEST(lmk_test_null_logger)
+TMK_INCLUDE_TEST(lmk_test_attached_console_log_handler)
 TMK_INCLUDE_TEST(lmk_test_null_logger_name)
 TMK_INCLUDE_TEST(lmk_test_get_existing_logger)
 TMK_INCLUDE_TEST(lmk_test_logger_log_levels)
@@ -502,8 +513,20 @@ TMK_INCLUDE_TEST(lmk_test_console_log_handler)
 TMK_INCLUDE_TEST(lmk_test_socket_log_handler)
 TMK_TEST_FUNCTION_TABLE_END
 
+void tmk_setup() {
+    lmk_init();
+    TMK_ASSERT_EQUAL(0, lmk_get_nr_loggers());
+    TMK_ASSERT_EQUAL(0, lmk_get_nr_handlers());
+}
+
+void tmk_teardown() {
+    lmk_destroy();
+    TMK_ASSERT_EQUAL(0, lmk_get_nr_loggers());
+    TMK_ASSERT_EQUAL(0, lmk_get_nr_handlers());
+}
+
 int main(int argc, char **argv) {
-    tmk_run_tests(test_function_table, NULL, NULL);
+    tmk_run_tests(test_function_table, tmk_setup, tmk_teardown);
     return EXIT_SUCCESS;
 }
 

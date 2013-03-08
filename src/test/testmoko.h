@@ -1,22 +1,27 @@
 /*
- * Testmoko - A unit testing framework for C.
- * Copyright (C) 2012 Jerrico Gamis (jecklgamis@gmail.com)
+ * The MIT License (MIT)
  *
- * This program is free software; you can redistribute it
- * and/or modify it under the terms of the GNU General Public
- * License as published by the Free Software Foundation; either
- * version 2 of the License, or (at your option) any later version.
+ * RCUNIT - A unit testing framework for C
+ * Copyright 2013 Jerrico Gamis <jecklgamis@gmail.com>
  *
- * This program is distributed in the hope that it will be
- * useful, but WITHOUT ANY WARRANTY; without even the implied
- * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
- * PURPOSE. See the GNU General Public License for more details.
+ * Permission is hereby granted, free of charge, to any person obtaining
+ * a copy of this software and associated documentation files (the
+ * "Software"), to deal in the Software without restriction, including
+ * without limitation the rights to use, copy, modify, merge, publish,
+ * distribute, sublicense, and sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to
+ * the following conditions:
  *
- * You should have received a copy of the GNU General Public
- * License along with this program; if not, write to the Free
- * Software Foundation, Inc., 59 Temple Place, Suite 330,
- * Boston, MA 02111-1307 USA
+ * The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
  *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+ * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+ * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+ * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
 #ifndef TESTMOKO_H
@@ -67,41 +72,48 @@ typedef struct tmk_test_function_entry {
 #define TMK_EXTERN_TEST_FUNCTION_TABLE(name) \
    extern tmk_test_function_entry name[];
 
+/* Warning : when defining custom assertion, make sure, you do not
+ * evaluate the condition more than once  (e.g. passing it as parameter in 
+ * varargs) as the condition itself can be a function call. A solution to
+ * to this is to assign/evaluate it to a local variable (block scope) 
+ */
+
 /** @brief Asserts a condition */
 #define TMK_ASSERT(cond) \
- { tmk_assert_impl((cond), __FILE__, __LINE__, "%s", #cond); }
+ { tmk_assert_impl((cond), __FILE__, __func__, __LINE__, "%s", #cond); }
 
 /** @brief Asserts a false condition */
 #define TMK_ASSERT_TRUE(cond) \
- { tmk_assert_impl((cond), __FILE__,__LINE__, "%s is not true", #cond); }
+ { tmk_assert_impl((cond), __FILE__,__func__, __LINE__, "%s is not true", #cond); }
 
 /** @brief Asserts a false condition */
 #define TMK_ASSERT_FALSE(cond) \
- { tmk_assert_impl(!(cond), __FILE__,__LINE__, "%s is true", #cond); }
+ { tmk_assert_impl(!(cond), __FILE__,__func__,__LINE__, "%s is true", #cond); }
 
 /** @brief Asserts a null pointer */
 #define TMK_ASSERT_NULL(ptr) \
- { tmk_assert_impl(((ptr) == NULL), __FILE__,__LINE__, "null", #ptr); }
+ { tmk_assert_impl(((ptr) == NULL), __FILE__,__func__,__LINE__, "null"); }
 
 /** @brief Asserts a non-null pointer */
 #define TMK_ASSERT_NOT_NULL(ptr) \
- { tmk_assert_impl(((ptr) != NULL), __FILE__,__LINE__,"pointer is not null", #ptr); }
+ { tmk_assert_impl(((ptr) != NULL), __FILE__,__func__,__LINE__,"pointer is not null"); }
 
 /** @brief Asserts that the two variables are equal */
 #define TMK_ASSERT_EQUAL(expected, actual) \
-    { tmk_assert_impl((expected == actual), __FILE__, __LINE__, "expected %d but got %d", expected, actual); }
+    { int __expected = expected; int __actual = actual; \
+      tmk_assert_impl((__expected == __actual), __FILE__, __func__, __LINE__,  \
+      "%s expected to be %d but got %d", #actual,__expected, __actual); \
+    }
 
 /** @brief Asserts that the two strings are equal */
 #define TMK_ASSERT_EQUAL_STRING(expected, actual) \
-    { tmk_assert_impl( !(strcmp((expected), (actual))), __FILE__, __LINE__, "expected \"%s\" but got \"%s\"", expected, actual); }
-
-/** @brief Asserts that the two byte arrays are equal */
-#define TMK_ASSERT_EQUAL_BYTE_ARRAY(expected, actual, size) \
-    { tmk_assert_impl( !(memcmp(expected, actual, size)), __FILE__, __LINE__, "unequal byte arrays"); }
+    { const char *__expected = expected; const char *__actual = actual; \
+     tmk_assert_impl( !(strcmp((__expected), (__actual))), __FILE__, __func__, __LINE__,  \
+             "expected \"%s\" but got \"%s\"", __expected, __actual); }
 
 /** @brief Records an explicitly failed condition described by msg */
 #define TMK_FAIL(msg) \
- { tmk_assert_impl(0, __FILE__, __LINE__, "Failed explicitly : %s", msg); }
+ { tmk_assert_impl(0, __FILE__, __func__, __LINE__, "Failed explicitly : %s", msg); }
 
 void tmk_log_impl(const char* filename, const int line_no,
         const char *format, ...);
@@ -109,10 +121,14 @@ void tmk_log_impl(const char* filename, const int line_no,
 #define TMK_LOG(format...) \
 	tmk_log_impl(__FILE__, __LINE__, format);
 
-extern TMK_API void tmk_run_tests(const tmk_test_function_entry *tbl, 
+
+#define TMK_PRINT_THIS_LINE \
+    fprintf(stdout,">> %s %s %d\n", __FILE__,__func__,__LINE__);
+
+extern TMK_API int tmk_run_tests(const tmk_test_function_entry *tbl,
         TMK_NULLABLE void (*setup)(), void (*teardown)());
 
-void tmk_assert_impl(int cond, const char *fname, int line, const char *format, ...);
+void tmk_assert_impl(int cond, const char *fname, const char *func_name, int line, const char *format, ...);
 
 #endif /* TESTMOKO_H */
 

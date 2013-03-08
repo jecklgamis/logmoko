@@ -39,7 +39,11 @@ LMK_API lmk_logger * lmk_get_logger(const char *name) {
         }
         if ((logger = (lmk_logger*) lmk_malloc(sizeof (lmk_logger))) != NULL) {
             lmk_init_logger(logger);
-            logger->name = name;
+            int name_len = strlen(name);
+            if ((logger->name = lmk_malloc(name_len)) != NULL) {
+                strncpy((void*) logger->name, name, name_len);
+                logger->name[name_len] = '\0';
+            }
             lmk_init_list(&logger->handler_ref_list);
             lmk_insert_list(&g_lmk_logger_list, &logger->link);
             lmk_attach_log_handler(logger, lmk_get_console_log_handler());
@@ -87,7 +91,11 @@ LMK_API int lmk_destroy_logger(lmk_logger **logger_addr) {
     }
     logger->initialized = 0;
     lmk_remove_list(&logger->link);
+    if (logger->name != NULL) {
+        lmk_free((void*) logger->name);
+    }
     lmk_free(logger);
+
     *logger_addr = NULL;
     return LMK_E_OK;
 }
@@ -130,6 +138,7 @@ lmk_log_handler_ref *lmk_srch_log_handler_ref(lmk_logger *logger,
         lmk_log_handler *handler) {
     if (logger != NULL && handler != NULL) {
         lmk_list *cursor = NULL;
+
         LMK_FOR_EACH_ENTRY(&logger->handler_ref_list, cursor) {
             lmk_log_handler_ref *handler_ref = (lmk_log_handler_ref*) cursor;
             if (handler_ref->handler == handler) {
@@ -362,6 +371,7 @@ int lmk_log_impl(lmk_logger *logger, const char *file_name, const int line_no,
 
     // check if the requested log level is allowed
     if (log_level >= logger->log_level) {
+
         LMK_FOR_EACH_ENTRY(&logger->handler_ref_list, cursor) {
             handler = ((lmk_log_handler_ref*) cursor)->handler;
 #if LMK_DEBUG
@@ -385,5 +395,21 @@ int lmk_log_impl(lmk_logger *logger, const char *file_name, const int line_no,
         }
     }
     return LMK_E_OK;
+}
+
+/* Retrieves the named handler attached given logger */
+lmk_log_handler *lmk_find_handler(lmk_logger *logger, const char *handler_name) {
+    lmk_list *cursor = NULL;
+    lmk_dump_loggers();
+    if (logger != NULL && handler_name != NULL) {
+
+        LMK_FOR_EACH_ENTRY(&logger->handler_ref_list, cursor) {
+            lmk_log_handler *handler = ((lmk_log_handler_ref*) cursor)->handler;
+            if (!strcmp(handler_name, handler->name)) {
+                return handler;
+            }
+        }
+    }
+    return NULL;
 }
 

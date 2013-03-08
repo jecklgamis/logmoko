@@ -1,22 +1,27 @@
 /*
- * Testmoko - A unit testing framework for C.
- * Copyright (C) 2012 Jerrico Gamis
+ * The MIT License (MIT)
  *
- * This program is free software; you can redistribute it
- * and/or modify it under the terms of the GNU General Public
- * License as published by the Free Software Foundation; either
- * version 2 of the License, or (at your option) any later version.
+ * RCUNIT - A unit testing framework for C
+ * Copyright 2013 Jerrico Gamis <jecklgamis@gmail.com>
  *
- * This program is distributed in the hope that it will be
- * useful, but WITHOUT ANY WARRANTY; without even the implied
- * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
- * PURPOSE. See the GNU General Public License for more details.
+ * Permission is hereby granted, free of charge, to any person obtaining
+ * a copy of this software and associated documentation files (the
+ * "Software"), to deal in the Software without restriction, including
+ * without limitation the rights to use, copy, modify, merge, publish,
+ * distribute, sublicense, and sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to
+ * the following conditions:
  *
- * You should have received a copy of the GNU General Public
- * License along with this program; if not, write to the Free
- * Software Foundation, Inc., 59 Temple Place, Suite 330,
- * Boston, MA 02111-1307 USA
+ * The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
  *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+ * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+ * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+ * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
 #include "testmoko.h"
@@ -39,57 +44,75 @@ void tmk_log_impl(const char* filename, const int line_no, const char *format, .
     fprintf(stdout, "[Testmoko] %s\n", local_log_buff);
 }
 
-void tmk_assert_impl(int cond, const char *filename, int line, const char *format, ...) {
+void tmk_assert_impl(int cond, const char *filename, const char *func_name,
+        int line, const char *format, ...) {
     va_list ap;
     memset(&assert_msg_buff[0], 0, TMK_LOG_BUFF_SIZE);
     va_start(ap, format);
     vsprintf(assert_msg_buff, format, ap);
     va_end(ap);
     if (!cond) {
-        TMK_LOG("Assertion failure in  %s:%d : %s", filename, line, assert_msg_buff);
+        TMK_LOG("Assertion failure in %s(%s:%d) : %s ", func_name,
+                filename, line, assert_msg_buff);
         TMK_THROW(TMK_GET_EXCP(TMK_EXCP_ASSERTIONFAILURE));
     }
 }
 
-TMK_API void tmk_run_tests(const tmk_test_function_entry *tbl,
+TMK_API int tmk_run_tests(const tmk_test_function_entry *tbl,
         TMK_NULLABLE void (*setup)(), TMK_NULLABLE void (*teardown)()) {
     tmk_test_function_entry *test;
     g_nr_failed_test = 0;
     TMK_LOG("Test started");
+    int abort_on_first_failure = 1;
 
     for (test = tbl; test->name != NULL; test++) {
         test->result = TEST_RESULT_SUCCESSFUL;
         TMK_TRY
         {
+            if (setup != NULL) {
+                setup();
+            }
             if (test->setup != NULL) {
                 test->setup();
-            } else {
-                if (setup != NULL) { 
-                    setup();
-                }
             }
             if (test->test != NULL) {
-                test->test();
+
+                test->test(NULL);
             }
             if (test->teardown != NULL) {
                 test->teardown();
-            } else {
-                if (teardown != NULL) {
-                    teardown();
-                }
+            }
+            if (teardown != NULL) {
+                teardown();
             }
             g_nr_succ_test++;
             TMK_LOG("Test : %s OK", test->name);
         }
 
         TMK_CATCH(e) {
-            TMK_LOG("Test : %s NG", test->name);
+            TMK_LOG("Test : %s NG (%s)", test->name, e->name);
+            if (abort_on_first_failure) {
+                return EXIT_FAILURE;
+            }
             g_nr_failed_test++;
             continue;
             test->result = TEST_RESULT_FAILED;
         }
         TMK_END_CATCH
     }
+
+    if (teardown != NULL) {
+        TMK_TRY
+        {
+            teardown();
+        }
+
+        TMK_CATCH(e) {
+            TMK_LOG("Exception encountered in teardown : %s", e->name);
+        }
+        TMK_END_CATCH
+    }
+
     TMK_LOG("Test Results : Passed = %lu, Failed = %lu ", g_nr_succ_test, g_nr_failed_test);
     if (g_nr_failed_test != 0) {
         TMK_LOG("Test failed!");
@@ -97,6 +120,7 @@ TMK_API void tmk_run_tests(const tmk_test_function_entry *tbl,
         TMK_LOG("Test successful");
     }
     TMK_LOG("Test finished");
+    return g_nr_failed_test != 0 ? EXIT_FAILURE : EXIT_SUCCESS;
 }
 
 void tmk_init() {

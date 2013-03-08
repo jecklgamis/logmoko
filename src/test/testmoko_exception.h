@@ -1,22 +1,27 @@
 /*
- * TestMoko - A unit testing framework for C.
- * Copyright (C) 2011 Jerrico L. Gamis
+ * The MIT License (MIT)
  *
- * This program is free software; you can redistribute it
- * and/or modify it under the terms of the GNU General Public
- * License as published by the Free Software Foundation; either
- * version 2 of the License, or (at your option) any later version.
+ * RCUNIT - A unit testing framework for C
+ * Copyright 2013 Jerrico Gamis <jecklgamis@gmail.com>
  *
- * This program is distributed in the hope that it will be
- * useful, but WITHOUT ANY WARRANTY; without even the implied
- * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
- * PURPOSE. See the GNU General Public License for more details.
+ * Permission is hereby granted, free of charge, to any person obtaining
+ * a copy of this software and associated documentation files (the
+ * "Software"), to deal in the Software without restriction, including
+ * without limitation the rights to use, copy, modify, merge, publish,
+ * distribute, sublicense, and sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to
+ * the following conditions:
  *
- * You should have received a copy of the GNU General Public
- * License along with this program; if not, write to the Free
- * Software Foundation, Inc., 59 Temple Place, Suite 330,
- * Boston, MA 02111-1307 USA
+ * The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
  *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+ * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+ * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+ * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
 #ifndef TESTMOKO_EXCEPTION_H
@@ -24,6 +29,7 @@
 
 #include <stdio.h>
 #include <setjmp.h>
+#include <signal.h>
 
 /** @brief Exception identifier */
 typedef enum tmk_exception_id {
@@ -32,6 +38,10 @@ typedef enum tmk_exception_id {
     , TMK_EXCP_ABORTMODRUN /**< Test module abort */
     , TMK_EXCP_NULLPOINTER /**< Null pointer */
     , TMK_EXCP_INVPARAM /**< Invalid parameter */
+    , TMK_EXCP_SIGSEGV /**< Segmentation violation */
+    , TMK_EXCP_SIGILL /**< Illegal instruction */
+    , TMK_EXCP_SIGFPE /**< Floating pointer exception */
+    , TMK_EXCP_SIGBUS /**< Bus error */
     , TMK_EXCP_ASSERTIONFAILURE /** <Assertion failure */
     /** Start of user-defined exceptions here */
     /** End of user-defined exceptions here */
@@ -51,6 +61,10 @@ typedef struct tmk_exception_frame {
     tmk_exception *excp; /**< Exception */
     sigjmp_buf *env; /**< native exception context */
     struct tmk_exception_frame *outer; /**< outer exception frame */
+    struct sigaction segv_act_old; /**< SIGSEGV action to be restored */
+    struct sigaction ill_act_old; /**< SIGILL action to be restored */
+    struct sigaction fpe_act_old; /**< SIGFPE action to be restored */
+    struct sigaction bus_act_old; /**< SIGBUGS action to be restored */
 } tmk_exception_frame;
 
 typedef struct tmk_exception_context {
@@ -72,13 +86,16 @@ typedef struct tmk_exception_context {
         __frame.excp = NULL;              \
 		g_tmk_curr_excp_frame = &__frame;         \
         g_tmk_curr_excp_frame->env = &__env;      \
+        tmk_sig_save(&__frame);             \
         __retcode = sigsetjmp(__env, 1);       \
         if (__retcode == 0) {                 \
+            tmk_sig_catch();                \
 
 /** @brief Catches an exception and store in the given variable */
 #define TMK_CATCH(__caught_excp)             \
         }                                     \
         g_tmk_curr_excp_frame = __frame.outer;    \
+        tmk_sig_restore(&__frame); \
         if (__retcode != TMK_EXCEPTION_TYPE_NONE ) {            \
             tmk_exception *__caught_excp = __frame.excp;       \
             int __ret_code = __retcode;                     \
@@ -107,5 +124,11 @@ tmk_exception *tmk_lookup_excp_by_id(tmk_exception_id id);
 /** External variable declarations */
 extern tmk_exception_frame *g_tmk_curr_excp_frame;
 
-#endif /* TESTMOKO_EXCEPTION_H */
+/** Exception signal handlers */
+extern void tmk_sig_handler(int signo);
+extern void tmk_sig_catch(void);
+extern void tmk_sig_restore(tmk_exception_frame *pf);
+extern void tmk_sig_save(tmk_exception_frame *pf);
+
+#endif
 

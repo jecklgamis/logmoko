@@ -87,7 +87,7 @@ typedef struct lmk_log_handler {
     void (*destroy)(struct lmk_log_handler*, void*);
     void (*log_impl)(struct lmk_log_handler*, void*);
     int type;
-    const char *name;
+    char *name;
     unsigned int nr_log_calls;
     unsigned int nr_logger_ref;
     int initialized;
@@ -134,7 +134,7 @@ typedef struct lmk_serial_log_handler {
 /** @brief Logger */
 typedef struct lmk_logger {
     lmk_list link;
-    const char* name;
+    char* name;
     int log_level;
     lmk_list handler_ref_list;
     int initialized;
@@ -230,6 +230,8 @@ extern LMK_API int lmk_get_handler_log_level(lmk_log_handler *handler);
 
 /** @brief Destroys the log handler */
 extern LMK_API int lmk_destroy_log_handler(lmk_log_handler **handler_addr);
+
+extern lmk_log_handler *lmk_find_handler(lmk_logger *logger, const char *handler_name);
 
 extern lmk_logger *lmk_srch_logger_by_name(const char *name);
 extern lmk_log_handler *lmk_srch_log_handler_by_name(const char *name);
