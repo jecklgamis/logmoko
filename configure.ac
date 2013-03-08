@@ -24,6 +24,7 @@ AC_PROG_CC
 
 # Checks for libraries.
 AC_PROG_RANLIB
+AC_SEARCH_LIBS([pthread_create],[pthread],,[AC_MSG_ERROR([Unable to find pthread library])])
 
 # Checks for header files.
 AC_HEADER_STDC
