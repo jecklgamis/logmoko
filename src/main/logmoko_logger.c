@@ -1,20 +1,27 @@
 /*
- * Logmoko - A logging framework for C.
- * Copyright (C) 2013 Jerrico Gamis
+ * The MIT License (MIT)
  *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * any later version.
+ * Logmoko - A logging framework for C
+ * Copyright 2013 Jerrico Gamis <jecklgamis@gmail.com>
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
+ * Permission is hereby granted, free of charge, to any person obtaining
+ * a copy of this software and associated documentation files (the
+ * "Software"), to deal in the Software without restriction, including
+ * without limitation the rights to use, copy, modify, merge, publish,
+ * distribute, sublicense, and sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to
+ * the following conditions:
  *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
  *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+ * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+ * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+ * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
 #include "logmoko.h"
@@ -26,10 +33,7 @@ extern int lmk_init_log_handler(lmk_log_handler *handler);
 int lmk_log_impl(lmk_logger *logger, const char *file_name, const int line_no,
         int log_level, const char *data);
 
-/**
- *  @brief Retrieves a named logger or creates a new one if non-existent
- *  @brief The logger
- */
+/* Retrieves a named logger or creates a new one if non-existent */
 LMK_API lmk_logger * lmk_get_logger(const char *name) {
     lmk_logger *logger = NULL;
     lmk_init();
@@ -51,11 +55,6 @@ LMK_API lmk_logger * lmk_get_logger(const char *name) {
     }
     return logger;
 }
-
-/**
- *  @brief Initializes a logger
- *  @return Operation error code (LMK_E_OK, LMK_E_NG)
- */
 
 int lmk_init_logger(lmk_logger *logger) {
     if (logger != NULL) {
@@ -100,13 +99,6 @@ LMK_API int lmk_destroy_logger(lmk_logger **logger_addr) {
     return LMK_E_OK;
 }
 
-/**
- *  @brief Sets the current log level
- *  @param[logger] Logger
- *  @param[in] level Log level
- *  @return Operation error code (LMK_E_OK, LMK_E_NG)
- */
-
 LMK_API void lmk_set_log_level(lmk_logger *logger, int log_level) {
     lmk_init();
     if (logger != NULL && (log_level >= LMK_LOG_LEVEL_TRACE && log_level
@@ -115,11 +107,6 @@ LMK_API void lmk_set_log_level(lmk_logger *logger, int log_level) {
     }
 }
 
-/**
- *  @brief Retrieves the current log level
- *  @param[logger] Logger
- *  @return Current log level
- */
 LMK_API int lmk_get_log_level(lmk_logger *logger) {
     lmk_init();
     if (logger != NULL) {
@@ -128,12 +115,6 @@ LMK_API int lmk_get_log_level(lmk_logger *logger) {
     return LMK_LOG_LEVEL_UNKNOWN;
 }
 
-/**
- *  @brief Searches a log handler from the given logger.
- *  @param[in] logger Logger
- *  @param[in] handler Log handler
- *  @return Operation error code (LMK_E_OK, LMK_E_NG)
- */
 lmk_log_handler_ref *lmk_srch_log_handler_ref(lmk_logger *logger,
         lmk_log_handler *handler) {
     if (logger != NULL && handler != NULL) {
@@ -149,12 +130,6 @@ lmk_log_handler_ref *lmk_srch_log_handler_ref(lmk_logger *logger,
     return NULL;
 }
 
-/**
- *  @brief Searches a log handler from the given logger by name
- *  @param[in] logger Logger
- *  @param[in] handler Log handler
- *  @return Operation error code (LMK_E_OK, LMK_E_NG)
- */
 lmk_log_handler_ref *lmk_srch_log_handler_ref_by_name(lmk_logger *logger,
         const char *name) {
     lmk_list *cursor = NULL;
@@ -171,21 +146,10 @@ lmk_log_handler_ref *lmk_srch_log_handler_ref_by_name(lmk_logger *logger,
     return NULL;
 }
 
-/**
- *  @brief Returns true if the given log handler is registered
- *  @param[in] logger Logger
- *  @param[in] handler Log handler
- *  @return Operation error code (LMK_E_OK, LMK_E_NG)
- */
 int lmk_is_log_handler_attached(lmk_logger *logger, lmk_log_handler *handler) {
     return (lmk_srch_log_handler_ref(logger, handler) != NULL) ? 1 : 0;
 }
 
-/**
- *  @brief Registers a log handler
- *  @param[in] handler Log handler
- *  @return Operation error code (LMK_E_OK, LMK_E_NG)
- */
 LMK_API int lmk_attach_log_handler(lmk_logger *logger, lmk_log_handler *handler) {
     lmk_log_handler_ref *handler_ref = NULL;
     lmk_init();
@@ -206,9 +170,6 @@ LMK_API int lmk_attach_log_handler(lmk_logger *logger, lmk_log_handler *handler)
     return LMK_E_OK;
 }
 
-/** Detaches a log handler from the logger.
- *
- * */
 LMK_API int lmk_detach_log_handler(lmk_logger *logger, lmk_log_handler *handler) {
     lmk_log_handler_ref *handler_ref = NULL;
     lmk_init();
@@ -343,13 +304,6 @@ lmk_log_record *lmk_create_log_record() {
     }
     return log_rec;
 }
-
-/**
- *  @brief Main log implementation
- *  @param[in] level Log level
- *  @param[in] data Log data
- *  @return Operation error code (LMK_E_OK, LMK_E_NG)
- */
 
 int lmk_log_impl(lmk_logger *logger, const char *file_name, const int line_no,
         int log_level, const char *data) {

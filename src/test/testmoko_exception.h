@@ -31,7 +31,7 @@
 #include <setjmp.h>
 #include <signal.h>
 
-/** @brief Exception identifier */
+/* Exception identifier */
 typedef enum tmk_exception_id {
     TMK_EXCP_ID_START = 0 /**< Reserved exception */
     , TMK_EXCP_ABORTTESTRUN /**< Test function abort */
@@ -50,13 +50,13 @@ typedef enum tmk_exception_id {
     /**< Reserved exception */
 } tmk_exception_id;
 
-/** @brief Exception runtime data structure */
+/* Exception runtime data structure */
 typedef struct tmk_exception {
     tmk_exception_id id; /**< Exception id */
     const char *name; /**< Exception name */
 } tmk_exception;
 
-/** @brief Exception frame runtime data structure */
+/* Exception frame runtime data structure */
 typedef struct tmk_exception_frame {
     tmk_exception *excp; /**< Exception */
     sigjmp_buf *env; /**< native exception context */
@@ -76,7 +76,7 @@ typedef struct tmk_exception_context {
 #define TMK_EXCEPTION_TYPE_THROW (1)
 #define TMK_EXCEPTION_TYPE_CORE  (10)
 
-/** @brief Saves an exception context */
+/* Saves an exception context */
 #define TMK_TRY                               \
     {                                         \
         int __retcode = -1;                    \
@@ -91,7 +91,7 @@ typedef struct tmk_exception_context {
         if (__retcode == 0) {                 \
             tmk_sig_catch();                \
 
-/** @brief Catches an exception and store in the given variable */
+/* Catches an exception and store in the given variable */
 #define TMK_CATCH(__caught_excp)             \
         }                                     \
         g_tmk_curr_excp_frame = __frame.outer;    \
@@ -100,23 +100,23 @@ typedef struct tmk_exception_context {
             tmk_exception *__caught_excp = __frame.excp;       \
             int __ret_code = __retcode;                     \
 
-/** @brief Terminates TMK_CATCH */
+/* Terminates TMK_CATCH */
 #define TMK_END_CATCH                                          \
        }                                                       \
     }
 
-/** @brief Throws the given exception object */
+/* Throws the given exception object */
 #define TMK_THROW(__thrown_excp__)                \
     {                                           \
         g_tmk_curr_excp_frame->excp = __thrown_excp__;\
         siglongjmp(*(g_tmk_curr_excp_frame->env), TMK_EXCEPTION_TYPE_THROW);\
     }
 
-/** @brief Retrieves the exception object of the given exception id*/
+/* Retrieves the exception object of the given exception id*/
 #define TMK_GET_EXCP(id)  \
     (tmk_lookup_excp_by_id((id)))
 
-/** @brief Exception mechanism function prototypes */
+/* Exception mechanism function prototypes */
 void tmk_init_exception();
 void tmk_destroy_exception();
 tmk_exception *tmk_lookup_excp_by_id(tmk_exception_id id);

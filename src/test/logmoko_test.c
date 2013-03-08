@@ -3,7 +3,7 @@
 #include "logmoko.h"
 #include "testmoko.h"
 
-/** Verify normal creation and destruction of logger 
+/* Verify normal creation and destruction of logger 
  *  Verify default log level
  */
 TMK_TEST(lmk_test_create_and_destroy_logger) {
@@ -26,32 +26,32 @@ TMK_TEST(lmk_test_attached_console_log_handler) {
     lmk_dump_loggers();
 }
 
-/** Verify that logging using a null logger is allowed (no exceptions of what kind)
+/* Verify that logging using a null logger is allowed (no exceptions of what kind)
  */
 TMK_TEST(lmk_test_null_logger) {
     LMK_LOG_TRACE(NULL, "This is a trace log");
     lmk_destroy();
 }
 
-/** Verify that a null logger name is not allowed */
+/* Verify that a null logger name is not allowed */
 TMK_TEST(lmk_test_null_logger_name) {
     lmk_logger *logger = lmk_get_logger(NULL);
     TMK_ASSERT_NULL(logger);
     lmk_destroy();
 }
 
-/** Verify that the same logger is returned if names are similar */
+/* Verify that the same logger is returned if names are similar */
 TMK_TEST(lmk_test_get_existing_logger) {
     lmk_logger *logger = lmk_get_logger("logger");
     TMK_ASSERT_NOT_NULL(logger);
 
     lmk_logger *logger2 = lmk_get_logger("logger");
     TMK_ASSERT_NOT_NULL(logger2);
-    TMK_ASSERT_EQUAL(logger, logger2);
+    TMK_ASSERT_EQUAL_PTRS(logger, logger2);
     lmk_destroy();
 }
 
-/** Verify that log requests are delegated to attached loggers */
+/* Verify that log requests are delegated to attached loggers */
 TMK_TEST(lmk_test_logger_log_levels) {
     lmk_logger *logger = lmk_get_logger("logger");
     TMK_ASSERT_NOT_NULL(logger);
@@ -144,7 +144,7 @@ TMK_TEST(lmk_test_logger_log_levels) {
 
     TMK_ASSERT_EQUAL(0, clh->nr_log_calls);
 
-    /** Verify that even if the log request is not filtered out by
+    /* Verify that even if the log request is not filtered out by
      * the logger, still, it will not be logged if the log handler level
      * is more restrictive than the logger.
      */
@@ -158,7 +158,7 @@ TMK_TEST(lmk_test_logger_log_levels) {
 
     TMK_ASSERT_EQUAL(1, clh->nr_log_calls);
 
-    /**
+    /*
      * Verify that if the handler log level is less restrictive than the logger
      * log level, requested log levels greater than that of the logger will
      * be logged.
@@ -176,7 +176,7 @@ TMK_TEST(lmk_test_logger_log_levels) {
     lmk_destroy();
 }
 
-/**
+/*
  * Verify that we can successfully create different log handler types
  */
 TMK_TEST(lmk_test_create_handlers) {
@@ -191,7 +191,7 @@ TMK_TEST(lmk_test_create_handlers) {
     lmk_destroy();
 }
 
-/**
+/*
  * Verify we can only create one and only one console log handler.
  */
 TMK_TEST(lmk_test_console_log_handler) {
@@ -201,7 +201,7 @@ TMK_TEST(lmk_test_console_log_handler) {
     lmk_destroy();
 }
 
-/**
+/*
  * Verify that we can successfully destroy handlers
  */
 TMK_TEST(lmk_test_destroy_handlers) {
@@ -217,7 +217,7 @@ TMK_TEST(lmk_test_destroy_handlers) {
     lmk_destroy();
 }
 
-/**
+/*
  * Verify that a handler cannot be destroyed if there are more than one
  * loggers referencing it.
  */
@@ -239,7 +239,7 @@ TMK_TEST(lmk_test_destroy_handler_with_logger_references) {
     lmk_destroy();
 }
 
-/**
+/*
  * Verify log handler attachment to multiple loggers.
  */
 TMK_TEST(lmk_test_attach_handlers_to_multiple_loggers) {
@@ -273,7 +273,7 @@ TMK_TEST(lmk_test_attach_handlers_to_multiple_loggers) {
 
 }
 
-/**
+/*
  * Verify that we cannot attach the same handler (ignored) but we can attach
  * similarly-typed log handlers.
  */
@@ -298,7 +298,7 @@ TMK_TEST(lmk_test_attach_same_handler) {
     lmk_destroy();
 }
 
-/** Verify that when we a destroy a logger, it will no longer be referencing
+/* Verify that when we a destroy a logger, it will no longer be referencing
  *  any log handlers and will be detached from the list of all loggers.
  */
 TMK_TEST(lmk_test_destroy_logger) {
@@ -329,7 +329,7 @@ TMK_TEST(lmk_test_destroy_logger) {
     lmk_destroy();
 }
 
-/**
+/*
  * Verify that when the framework is destroyed, all loggers and log handlers
  * are destroyed as well.
  *
@@ -419,7 +419,7 @@ void *log_user_thread_routine4(void *arg) {
     LMK_LOG_TRACE(logger, "[id=%d] Exiting");
 }
 
-/**
+/*
  * Note:
  *   Threads : t1, t2, t3, t4
  *   logger1 has file log handler, flh

@@ -1,28 +1,31 @@
 /*
- * Logmoko - A logging framework for C.
- * Copyright (C) 2013 Jerrico Gamis
+ * The MIT License (MIT)
  *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * any later version.
+ * Logmoko - A logging framework for C
+ * Copyright 2013 Jerrico Gamis <jecklgamis@gmail.com>
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
+ * Permission is hereby granted, free of charge, to any person obtaining
+ * a copy of this software and associated documentation files (the
+ * "Software"), to deal in the Software without restriction, including
+ * without limitation the rights to use, copy, modify, merge, publish,
+ * distribute, sublicense, and sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to
+ * the following conditions:
  *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
  *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+ * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+ * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+ * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
+
 
 #include "logmoko.h"
-
-/**
- *  @brief Initializes the log handler
- *  @param[in] param  Arbitrary parameter set by framework
- */
 
 void lmk_file_log_handler_init(lmk_log_handler *handler, void *param) {
     lmk_file_log_handler *flh;
@@ -46,11 +49,6 @@ void lmk_file_log_handler_init(lmk_log_handler *handler, void *param) {
     LMK_UNLOCK_MUTEX(handler->lock);
 }
 
-/**
- *  @brief Log handler implementation
- *  @param[in] param  Log data (LMK_LOG_REC)
- */
-
 void lmk_file_log_handler_log_impl(lmk_log_handler *handler, void *param) {
     const char *level_str = NULL;
     lmk_log_record *log_rec = NULL;
@@ -72,11 +70,6 @@ void lmk_file_log_handler_log_impl(lmk_log_handler *handler, void *param) {
     LMK_UNLOCK_MUTEX(handler->lock);
 }
 
-/**
- *  @brief Destroys the log handler
- *  @param[in] param  Set to NULL value
- */
-
 void lmk_file_log_handler_destroy(lmk_log_handler *handler, void *param) {
     char ts_buff[LMK_TSTAMP_BUFF_SIZE];
     lmk_file_log_handler *flh;
@@ -92,11 +85,6 @@ void lmk_file_log_handler_destroy(lmk_log_handler *handler, void *param) {
     LMK_UNLOCK_MUTEX(handler->lock);
 }
 
-/**
- *  @brief Sets the log handler file names. This applies only to file log handler.
- *  @param[in] handler handler
- *  @param[in] filename log file name
- */
 LMK_API void lmk_set_log_filename(lmk_log_handler *handler, const char *filename) {
     LMK_LOCK_MUTEX(handler->lock);
     if (handler != NULL && filename != NULL) {

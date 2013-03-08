@@ -1,21 +1,29 @@
 /*
- * Logmoko - A logging framework for C.
- * Copyright (C) 2013 Jerrico Gamis
+ * The MIT License (MIT)
  *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * any later version.
+ * Logmoko - A logging framework for C
+ * Copyright 2013 Jerrico Gamis <jecklgamis@gmail.com>
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
+ * Permission is hereby granted, free of charge, to any person obtaining
+ * a copy of this software and associated documentation files (the
+ * "Software"), to deal in the Software without restriction, including
+ * without limitation the rights to use, copy, modify, merge, publish,
+ * distribute, sublicense, and sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to
+ * the following conditions:
  *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
  *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+ * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+ * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+ * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
+
 
 #include "logmoko.h"
 
@@ -53,9 +61,7 @@ void lmk_init_base_log_handler(lmk_log_handler *handler, int type,
     }
 }
 
-/**
- * Retrieves the console log handler.
- */
+ /* Retrieves the console log handler */
 LMK_API lmk_log_handler *lmk_get_console_log_handler() {
     lmk_console_log_handler *clh = NULL;
     lmk_log_handler *handler = NULL;
@@ -119,12 +125,6 @@ LMK_API lmk_log_handler *lmk_get_socket_log_handler(const char* name) {
     return ((lmk_log_handler*) slh);
 }
 
-/**
- *  @brief Stops a log handler
- *  @param[in] handler_addr Log handler address
- *  @return Operation error code (LMK_E_OK, LMK_E_NG)
- */
-
 int lmk_destroy_log_handler(lmk_log_handler **handler_addr) {
     lmk_log_handler *handler = NULL;
 
@@ -153,13 +153,6 @@ int lmk_destroy_log_handler(lmk_log_handler **handler_addr) {
     return LMK_E_OK;
 }
 
-/**
- *  @brief Sets the current log level
- *  @param[logger] Logger
- *  @param[in] level Log level
- *  @return Operation error code (LMK_E_OK, LMK_E_NG)
- */
-
 LMK_API void lmk_set_handler_log_level(lmk_log_handler *handler, int log_level) {
     lmk_init();
     if (handler != NULL && (log_level >= LMK_LOG_LEVEL_TRACE && log_level
@@ -176,14 +169,7 @@ LMK_API int lmk_get_handler_log_level(lmk_log_handler *handler) {
     return LMK_LOG_LEVEL_UNKNOWN;
 }
 
-/** @brief Log handler type string */
 static const char* g_log_hnd_type_str[] = {"CONSOLE", "FILE", "SOCKET"};
-
-/**
- *  @brief Returns the log handler type string
- *  @param[in] level Log level
- *  @return Log handler type string
- */
 const char *lmk_get_log_handler_type_str(int type) {
     const char *type_str = "UNKNOWN";
     if (type >= LMK_LOG_HANDLER_TYPE_CONSOLE && type

@@ -1,28 +1,30 @@
 /*
- * Logmoko - A logging framework for C.
- * Copyright (C) 2013 Jerrico Gamis
+ * The MIT License (MIT)
  *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * any later version.
+ * Logmoko - A logging framework for C
+ * Copyright 2013 Jerrico Gamis <jecklgamis@gmail.com>
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
+ * Permission is hereby granted, free of charge, to any person obtaining
+ * a copy of this software and associated documentation files (the
+ * "Software"), to deal in the Software without restriction, including
+ * without limitation the rights to use, copy, modify, merge, publish,
+ * distribute, sublicense, and sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to
+ * the following conditions:
  *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
  *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+ * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+ * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+ * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
 #include "logmoko.h"
-
-/**
- *  @brief Initializes the log handler
- *  @param[in] param  Arbitrary parameter set by the framework
- */
 
 #define LMK_DEBUG_SOCKET_LOG_HANDLER 1
 
@@ -35,11 +37,6 @@ void lmk_socket_log_handler_init(lmk_log_handler *handler, void *param) {
     lmk_open_udp_socket(&slh->socket_object, NULL);
     LMK_UNLOCK_MUTEX(handler->lock);
 }
-
-/**
- *  @brief Log handler implementation
- *  @param[in] param  Log data (lmk_log_record)
- */
 
 void lmk_socket_log_handler_log_impl(lmk_log_handler *handler, void *param) {
     lmk_log_record *log_rec = NULL;
@@ -67,7 +64,7 @@ void lmk_socket_log_handler_log_impl(lmk_log_handler *handler, void *param) {
         buffer.addr = (unsigned char*) output_buff;
         buffer.size = strlen(output_buff);
 #ifdef LMK_DEBUG_SOCKET_LOG_HANDLER
-        fprintf(stdout,"Writing %d bytes to socket\n", buffer.size);
+        fprintf(stdout,"Writing %lu bytes to socket\n", buffer.size);
 #endif        
         lmk_udp_packet packet;
         packet.buffer = &buffer;
@@ -76,11 +73,6 @@ void lmk_socket_log_handler_log_impl(lmk_log_handler *handler, void *param) {
     }
     LMK_UNLOCK_MUTEX(handler->lock);
 }
-
-/**
- *  @brief Destroys the log handler
- *  @param[in] param  Set to NULL value
- */
 
 void lmk_socket_log_handler_destroy(lmk_log_handler *handler, void *param) {
     lmk_socket_log_handler *slh = NULL;
@@ -99,8 +91,6 @@ void lmk_socket_log_handler_destroy(lmk_log_handler *handler, void *param) {
     LMK_UNLOCK_MUTEX(handler->lock);
 }
 
-/** @brief Adds a log server. 
- */
 LMK_API void lmk_attach_log_listener(lmk_log_handler *handler, const char *host,
         int port) {
     LMK_LOCK_MUTEX(handler->lock);

@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.61)
-AC_INIT([logmoko],[1.0],[jecklgamis@gmail.com])
+AC_INIT([logmoko],[1.0-beta],[jecklgamis@gmail.com])
 AC_CANONICAL_HOST
 AC_PROG_MAKE_SET
 AC_CONFIG_SRCDIR([src/main/logmoko.c])
