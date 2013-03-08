@@ -6,7 +6,7 @@ AC_INIT([logmoko],[1.0],[jecklgamis@gmail.com])
 AC_CANONICAL_HOST
 AC_PROG_MAKE_SET
 AC_CONFIG_SRCDIR([src/main/logmoko.c])
-AM_INIT_AUTOMAKE([logmoko],[1.0])
+AM_INIT_AUTOMAKE
 
 # Configuration header
 AC_CONFIG_HEADER(src/main/logmoko_config_env.h)
