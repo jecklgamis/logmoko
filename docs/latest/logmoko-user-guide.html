@@ -1,0 +1,1079 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN"
+    "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+<head>
+<meta http-equiv="Content-Type" content="application/xhtml+xml; charset=UTF-8" />
+<meta name="generator" content="AsciiDoc 8.6.8" />
+<title>Logmoko User Guide</title>
+<style type="text/css">
+/* Shared CSS for AsciiDoc xhtml11 and html5 backends */
+
+/* Default font. */
+body {
+  font-family: Georgia,serif;
+}
+
+/* Title font. */
+h1, h2, h3, h4, h5, h6,
+div.title, caption.title,
+thead, p.table.header,
+#toctitle,
+#author, #revnumber, #revdate, #revremark,
+#footer {
+  font-family: Arial,Helvetica,sans-serif;
+}
+
+body {
+  margin: 1em 5% 1em 5%;
+}
+
+a {
+  color: blue;
+  text-decoration: underline;
+}
+a:visited {
+  color: fuchsia;
+}
+
+em {
+  font-style: italic;
+  color: navy;
+}
+
+strong {
+  font-weight: bold;
+  color: #083194;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  color: #527bbd;
+  margin-top: 1.2em;
+  margin-bottom: 0.5em;
+  line-height: 1.3;
+}
+
+h1, h2, h3 {
+  border-bottom: 2px solid silver;
+}
+h2 {
+  padding-top: 0.5em;
+}
+h3 {
+  float: left;
+}
+h3 + * {
+  clear: left;
+}
+h5 {
+  font-size: 1.0em;
+}
+
+div.sectionbody {
+  margin-left: 0;
+}
+
+hr {
+  border: 1px solid silver;
+}
+
+p {
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+}
+
+ul, ol, li > p {
+  margin-top: 0;
+}
+ul > li     { color: #aaa; }
+ul > li > * { color: black; }
+
+.monospaced, code, pre {
+  font-family: "Courier New", Courier, monospace;
+  font-size: inherit;
+  color: navy;
+  padding: 0;
+  margin: 0;
+}
+
+
+#author {
+  color: #527bbd;
+  font-weight: bold;
+  font-size: 1.1em;
+}
+#email {
+}
+#revnumber, #revdate, #revremark {
+}
+
+#footer {
+  font-size: small;
+  border-top: 2px solid silver;
+  padding-top: 0.5em;
+  margin-top: 4.0em;
+}
+#footer-text {
+  float: left;
+  padding-bottom: 0.5em;
+}
+#footer-badges {
+  float: right;
+  padding-bottom: 0.5em;
+}
+
+#preamble {
+  margin-top: 1.5em;
+  margin-bottom: 1.5em;
+}
+div.imageblock, div.exampleblock, div.verseblock,
+div.quoteblock, div.literalblock, div.listingblock, div.sidebarblock,
+div.admonitionblock {
+  margin-top: 1.0em;
+  margin-bottom: 1.5em;
+}
+div.admonitionblock {
+  margin-top: 2.0em;
+  margin-bottom: 2.0em;
+  margin-right: 10%;
+  color: #606060;
+}
+
+div.content { /* Block element content. */
+  padding: 0;
+}
+
+/* Block element titles. */
+div.title, caption.title {
+  color: #527bbd;
+  font-weight: bold;
+  text-align: left;
+  margin-top: 1.0em;
+  margin-bottom: 0.5em;
+}
+div.title + * {
+  margin-top: 0;
+}
+
+td div.title:first-child {
+  margin-top: 0.0em;
+}
+div.content div.title:first-child {
+  margin-top: 0.0em;
+}
+div.content + div.title {
+  margin-top: 0.0em;
+}
+
+div.sidebarblock > div.content {
+  background: #ffffee;
+  border: 1px solid #dddddd;
+  border-left: 4px solid #f0f0f0;
+  padding: 0.5em;
+}
+
+div.listingblock > div.content {
+  border: 1px solid #dddddd;
+  border-left: 5px solid #f0f0f0;
+  background: #f8f8f8;
+  padding: 0.5em;
+}
+
+div.quoteblock, div.verseblock {
+  padding-left: 1.0em;
+  margin-left: 1.0em;
+  margin-right: 10%;
+  border-left: 5px solid #f0f0f0;
+  color: #888;
+}
+
+div.quoteblock > div.attribution {
+  padding-top: 0.5em;
+  text-align: right;
+}
+
+div.verseblock > pre.content {
+  font-family: inherit;
+  font-size: inherit;
+}
+div.verseblock > div.attribution {
+  padding-top: 0.75em;
+  text-align: left;
+}
+/* DEPRECATED: Pre version 8.2.7 verse style literal block. */
+div.verseblock + div.attribution {
+  text-align: left;
+}
+
+div.admonitionblock .icon {
+  vertical-align: top;
+  font-size: 1.1em;
+  font-weight: bold;
+  text-decoration: underline;
+  color: #527bbd;
+  padding-right: 0.5em;
+}
+div.admonitionblock td.content {
+  padding-left: 0.5em;
+  border-left: 3px solid #dddddd;
+}
+
+div.exampleblock > div.content {
+  border-left: 3px solid #dddddd;
+  padding-left: 0.5em;
+}
+
+div.imageblock div.content { padding-left: 0; }
+span.image img { border-style: none; }
+a.image:visited { color: white; }
+
+dl {
+  margin-top: 0.8em;
+  margin-bottom: 0.8em;
+}
+dt {
+  margin-top: 0.5em;
+  margin-bottom: 0;
+  font-style: normal;
+  color: navy;
+}
+dd > *:first-child {
+  margin-top: 0.1em;
+}
+
+ul, ol {
+    list-style-position: outside;
+}
+ol.arabic {
+  list-style-type: decimal;
+}
+ol.loweralpha {
+  list-style-type: lower-alpha;
+}
+ol.upperalpha {
+  list-style-type: upper-alpha;
+}
+ol.lowerroman {
+  list-style-type: lower-roman;
+}
+ol.upperroman {
+  list-style-type: upper-roman;
+}
+
+div.compact ul, div.compact ol,
+div.compact p, div.compact p,
+div.compact div, div.compact div {
+  margin-top: 0.1em;
+  margin-bottom: 0.1em;
+}
+
+tfoot {
+  font-weight: bold;
+}
+td > div.verse {
+  white-space: pre;
+}
+
+div.hdlist {
+  margin-top: 0.8em;
+  margin-bottom: 0.8em;
+}
+div.hdlist tr {
+  padding-bottom: 15px;
+}
+dt.hdlist1.strong, td.hdlist1.strong {
+  font-weight: bold;
+}
+td.hdlist1 {
+  vertical-align: top;
+  font-style: normal;
+  padding-right: 0.8em;
+  color: navy;
+}
+td.hdlist2 {
+  vertical-align: top;
+}
+div.hdlist.compact tr {
+  margin: 0;
+  padding-bottom: 0;
+}
+
+.comment {
+  background: yellow;
+}
+
+.footnote, .footnoteref {
+  font-size: 0.8em;
+}
+
+span.footnote, span.footnoteref {
+  vertical-align: super;
+}
+
+#footnotes {
+  margin: 20px 0 20px 0;
+  padding: 7px 0 0 0;
+}
+
+#footnotes div.footnote {
+  margin: 0 0 5px 0;
+}
+
+#footnotes hr {
+  border: none;
+  border-top: 1px solid silver;
+  height: 1px;
+  text-align: left;
+  margin-left: 0;
+  width: 20%;
+  min-width: 100px;
+}
+
+div.colist td {
+  padding-right: 0.5em;
+  padding-bottom: 0.3em;
+  vertical-align: top;
+}
+div.colist td img {
+  margin-top: 0.3em;
+}
+
+@media print {
+  #footer-badges { display: none; }
+}
+
+#toc {
+  margin-bottom: 2.5em;
+}
+
+#toctitle {
+  color: #527bbd;
+  font-size: 1.1em;
+  font-weight: bold;
+  margin-top: 1.0em;
+  margin-bottom: 0.1em;
+}
+
+div.toclevel0, div.toclevel1, div.toclevel2, div.toclevel3, div.toclevel4 {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+div.toclevel2 {
+  margin-left: 2em;
+  font-size: 0.9em;
+}
+div.toclevel3 {
+  margin-left: 4em;
+  font-size: 0.9em;
+}
+div.toclevel4 {
+  margin-left: 6em;
+  font-size: 0.9em;
+}
+
+span.aqua { color: aqua; }
+span.black { color: black; }
+span.blue { color: blue; }
+span.fuchsia { color: fuchsia; }
+span.gray { color: gray; }
+span.green { color: green; }
+span.lime { color: lime; }
+span.maroon { color: maroon; }
+span.navy { color: navy; }
+span.olive { color: olive; }
+span.purple { color: purple; }
+span.red { color: red; }
+span.silver { color: silver; }
+span.teal { color: teal; }
+span.white { color: white; }
+span.yellow { color: yellow; }
+
+span.aqua-background { background: aqua; }
+span.black-background { background: black; }
+span.blue-background { background: blue; }
+span.fuchsia-background { background: fuchsia; }
+span.gray-background { background: gray; }
+span.green-background { background: green; }
+span.lime-background { background: lime; }
+span.maroon-background { background: maroon; }
+span.navy-background { background: navy; }
+span.olive-background { background: olive; }
+span.purple-background { background: purple; }
+span.red-background { background: red; }
+span.silver-background { background: silver; }
+span.teal-background { background: teal; }
+span.white-background { background: white; }
+span.yellow-background { background: yellow; }
+
+span.big { font-size: 2em; }
+span.small { font-size: 0.6em; }
+
+span.underline { text-decoration: underline; }
+span.overline { text-decoration: overline; }
+span.line-through { text-decoration: line-through; }
+
+div.unbreakable { page-break-inside: avoid; }
+
+
+/*
+ * xhtml11 specific
+ *
+ * */
+
+div.tableblock {
+  margin-top: 1.0em;
+  margin-bottom: 1.5em;
+}
+div.tableblock > table {
+  border: 3px solid #527bbd;
+}
+thead, p.table.header {
+  font-weight: bold;
+  color: #527bbd;
+}
+p.table {
+  margin-top: 0;
+}
+/* Because the table frame attribute is overriden by CSS in most browsers. */
+div.tableblock > table[frame="void"] {
+  border-style: none;
+}
+div.tableblock > table[frame="hsides"] {
+  border-left-style: none;
+  border-right-style: none;
+}
+div.tableblock > table[frame="vsides"] {
+  border-top-style: none;
+  border-bottom-style: none;
+}
+
+
+/*
+ * html5 specific
+ *
+ * */
+
+table.tableblock {
+  margin-top: 1.0em;
+  margin-bottom: 1.5em;
+}
+thead, p.tableblock.header {
+  font-weight: bold;
+  color: #527bbd;
+}
+p.tableblock {
+  margin-top: 0;
+}
+table.tableblock {
+  border-width: 3px;
+  border-spacing: 0px;
+  border-style: solid;
+  border-color: #527bbd;
+  border-collapse: collapse;
+}
+th.tableblock, td.tableblock {
+  border-width: 1px;
+  padding: 4px;
+  border-style: solid;
+  border-color: #527bbd;
+}
+
+table.tableblock.frame-topbot {
+  border-left-style: hidden;
+  border-right-style: hidden;
+}
+table.tableblock.frame-sides {
+  border-top-style: hidden;
+  border-bottom-style: hidden;
+}
+table.tableblock.frame-none {
+  border-style: hidden;
+}
+
+th.tableblock.halign-left, td.tableblock.halign-left {
+  text-align: left;
+}
+th.tableblock.halign-center, td.tableblock.halign-center {
+  text-align: center;
+}
+th.tableblock.halign-right, td.tableblock.halign-right {
+  text-align: right;
+}
+
+th.tableblock.valign-top, td.tableblock.valign-top {
+  vertical-align: top;
+}
+th.tableblock.valign-middle, td.tableblock.valign-middle {
+  vertical-align: middle;
+}
+th.tableblock.valign-bottom, td.tableblock.valign-bottom {
+  vertical-align: bottom;
+}
+
+
+/*
+ * manpage specific
+ *
+ * */
+
+body.manpage h1 {
+  padding-top: 0.5em;
+  padding-bottom: 0.5em;
+  border-top: 2px solid silver;
+  border-bottom: 2px solid silver;
+}
+body.manpage h2 {
+  border-style: none;
+}
+body.manpage div.sectionbody {
+  margin-left: 3em;
+}
+
+@media print {
+  body.manpage div#toc { display: none; }
+}
+
+
+</style>
+<script type="text/javascript">
+/*<![CDATA[*/
+var asciidoc = {  // Namespace.
+
+/////////////////////////////////////////////////////////////////////
+// Table Of Contents generator
+/////////////////////////////////////////////////////////////////////
+
+/* Author: Mihai Bazon, September 2002
+ * http://students.infoiasi.ro/~mishoo
+ *
+ * Table Of Content generator
+ * Version: 0.4
+ *
+ * Feel free to use this script under the terms of the GNU General Public
+ * License, as long as you do not remove or alter this notice.
+ */
+
+ /* modified by Troy D. Hanson, September 2006. License: GPL */
+ /* modified by Stuart Rackham, 2006, 2009. License: GPL */
+
+// toclevels = 1..4.
+toc: function (toclevels) {
+
+  function getText(el) {
+    var text = "";
+    for (var i = el.firstChild; i != null; i = i.nextSibling) {
+      if (i.nodeType == 3 /* Node.TEXT_NODE */) // IE doesn't speak constants.
+        text += i.data;
+      else if (i.firstChild != null)
+        text += getText(i);
+    }
+    return text;
+  }
+
+  function TocEntry(el, text, toclevel) {
+    this.element = el;
+    this.text = text;
+    this.toclevel = toclevel;
+  }
+
+  function tocEntries(el, toclevels) {
+    var result = new Array;
+    var re = new RegExp('[hH]([1-'+(toclevels+1)+'])');
+    // Function that scans the DOM tree for header elements (the DOM2
+    // nodeIterator API would be a better technique but not supported by all
+    // browsers).
+    var iterate = function (el) {
+      for (var i = el.firstChild; i != null; i = i.nextSibling) {
+        if (i.nodeType == 1 /* Node.ELEMENT_NODE */) {
+          var mo = re.exec(i.tagName);
+          if (mo && (i.getAttribute("class") || i.getAttribute("className")) != "float") {
+            result[result.length] = new TocEntry(i, getText(i), mo[1]-1);
+          }
+          iterate(i);
+        }
+      }
+    }
+    iterate(el);
+    return result;
+  }
+
+  var toc = document.getElementById("toc");
+  if (!toc) {
+    return;
+  }
+
+  // Delete existing TOC entries in case we're reloading the TOC.
+  var tocEntriesToRemove = [];
+  var i;
+  for (i = 0; i < toc.childNodes.length; i++) {
+    var entry = toc.childNodes[i];
+    if (entry.nodeName.toLowerCase() == 'div'
+     && entry.getAttribute("class")
+     && entry.getAttribute("class").match(/^toclevel/))
+      tocEntriesToRemove.push(entry);
+  }
+  for (i = 0; i < tocEntriesToRemove.length; i++) {
+    toc.removeChild(tocEntriesToRemove[i]);
+  }
+
+  // Rebuild TOC entries.
+  var entries = tocEntries(document.getElementById("content"), toclevels);
+  for (var i = 0; i < entries.length; ++i) {
+    var entry = entries[i];
+    if (entry.element.id == "")
+      entry.element.id = "_toc_" + i;
+    var a = document.createElement("a");
+    a.href = "#" + entry.element.id;
+    a.appendChild(document.createTextNode(entry.text));
+    var div = document.createElement("div");
+    div.appendChild(a);
+    div.className = "toclevel" + entry.toclevel;
+    toc.appendChild(div);
+  }
+  if (entries.length == 0)
+    toc.parentNode.removeChild(toc);
+},
+
+
+/////////////////////////////////////////////////////////////////////
+// Footnotes generator
+/////////////////////////////////////////////////////////////////////
+
+/* Based on footnote generation code from:
+ * http://www.brandspankingnew.net/archive/2005/07/format_footnote.html
+ */
+
+footnotes: function () {
+  // Delete existing footnote entries in case we're reloading the footnodes.
+  var i;
+  var noteholder = document.getElementById("footnotes");
+  if (!noteholder) {
+    return;
+  }
+  var entriesToRemove = [];
+  for (i = 0; i < noteholder.childNodes.length; i++) {
+    var entry = noteholder.childNodes[i];
+    if (entry.nodeName.toLowerCase() == 'div' && entry.getAttribute("class") == "footnote")
+      entriesToRemove.push(entry);
+  }
+  for (i = 0; i < entriesToRemove.length; i++) {
+    noteholder.removeChild(entriesToRemove[i]);
+  }
+
+  // Rebuild footnote entries.
+  var cont = document.getElementById("content");
+  var spans = cont.getElementsByTagName("span");
+  var refs = {};
+  var n = 0;
+  for (i=0; i<spans.length; i++) {
+    if (spans[i].className == "footnote") {
+      n++;
+      var note = spans[i].getAttribute("data-note");
+      if (!note) {
+        // Use [\s\S] in place of . so multi-line matches work.
+        // Because JavaScript has no s (dotall) regex flag.
+        note = spans[i].innerHTML.match(/\s*\[([\s\S]*)]\s*/)[1];
+        spans[i].innerHTML =
+          "[<a id='_footnoteref_" + n + "' href='#_footnote_" + n +
+          "' title='View footnote' class='footnote'>" + n + "</a>]";
+        spans[i].setAttribute("data-note", note);
+      }
+      noteholder.innerHTML +=
+        "<div class='footnote' id='_footnote_" + n + "'>" +
+        "<a href='#_footnoteref_" + n + "' title='Return to text'>" +
+        n + "</a>. " + note + "</div>";
+      var id =spans[i].getAttribute("id");
+      if (id != null) refs["#"+id] = n;
+    }
+  }
+  if (n == 0)
+    noteholder.parentNode.removeChild(noteholder);
+  else {
+    // Process footnoterefs.
+    for (i=0; i<spans.length; i++) {
+      if (spans[i].className == "footnoteref") {
+        var href = spans[i].getElementsByTagName("a")[0].getAttribute("href");
+        href = href.match(/#.*/)[0];  // Because IE return full URL.
+        n = refs[href];
+        spans[i].innerHTML =
+          "[<a href='#_footnote_" + n +
+          "' title='View footnote' class='footnote'>" + n + "</a>]";
+      }
+    }
+  }
+},
+
+install: function(toclevels) {
+  var timerId;
+
+  function reinstall() {
+    asciidoc.footnotes();
+    if (toclevels) {
+      asciidoc.toc(toclevels);
+    }
+  }
+
+  function reinstallAndRemoveTimer() {
+    clearInterval(timerId);
+    reinstall();
+  }
+
+  timerId = setInterval(reinstall, 500);
+  if (document.addEventListener)
+    document.addEventListener("DOMContentLoaded", reinstallAndRemoveTimer, false);
+  else
+    window.onload = reinstallAndRemoveTimer;
+}
+
+}
+asciidoc.install(2);
+/*]]>*/
+</script>
+</head>
+<body class="article">
+<div id="header">
+<h1>Logmoko User Guide</h1>
+<span id="author">Jerrico Gamis</span><br />
+<span id="email"><code>&lt;<a href="mailto:jecklgamis@gmail.com">jecklgamis@gmail.com</a>&gt;</code></span><br />
+<div id="toc">
+  <div id="toctitle">Table of Contents</div>
+  <noscript><p><b>JavaScript must be enabled in your browser to display the table of contents.</b></p></noscript>
+</div>
+</div>
+<div id="content">
+<div class="sect1">
+<h2 id="_introduction">1. Introduction</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Logmoko is a small logging framework for C.  It allows user to control which log
+statements are logged based on a configured log level and to which interface
+(e.g. console, file, remote connection, etc).</p></div>
+<div class="paragraph"><p>Logmoko was developed from a refactored logging facility used in RCUNIT, a C
+unit testing framework.Logmoko is free, you can use it in accordance with the
+terms of The MIT License.</p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_installing_logmoko">2. Installing Logmoko</h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="_installing_from_source">2.1. Installing from Source</h3>
+<div class="listingblock">
+<div class="content">
+<pre><code>$ git clone git@github.com:jecklgamis/logmoko.git
+$ ./autogen.sh
+$ ./configure
+$ make check
+$ make all
+$ sudo make install</code></pre>
+</div></div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_getting_started">3. Getting Started</h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="_a_simple_example">3.1. A Simple Example</h3>
+<div class="paragraph"><p>The code below exemplifies a simple logging scenario.</p></div>
+<div class="listingblock">
+<div class="title">Example</div>
+<div class="content">
+<pre><code>#include &lt;stdlib.h&gt;
+#include "logmoko.h"
+
+int main(int argc, char *argv[]) {
+    lmk_logger *logger = lmk_get_logger("mylogger");
+    lmk_log_handler *flh = lmk_get_file_log_handler("file-handler", "myapp.log");
+
+    lmk_attach_log_handler(logger, flh);
+
+    LMK_LOG_TRACE(logger, "this is a trace log");
+    LMK_LOG_DEBUG(logger, "this is a debug log");
+    LMK_LOG_INFO(logger, "this is an info log");
+    LMK_LOG_WARN(logger, "this is a warn log");
+    LMK_LOG_ERROR(logger, "this is an error log");
+    LMK_LOG_FATAL(logger, "this is a fatal log");
+
+    lmk_destroy();
+    return EXIT_SUCCESS;
+}</code></pre>
+</div></div>
+<div class="listingblock">
+<div class="content">
+<pre><code>$ gcc -o myapp myapp.c -llogmoko</code></pre>
+</div></div>
+<div class="listingblock">
+<div class="title">Example Output</div>
+<div class="content">
+<pre><code>[TRACE Thu Mar  7 17:58:54 2013 (app.c:10)] : this is a trace log
+[DEBUG Thu Mar  7 17:58:54 2013 (app.c:11)] : this is a debug log
+[INFO  Thu Mar  7 17:58:54 2013 (app.c:12)] : this is an info log
+[WARN  Thu Mar  7 17:58:54 2013 (app.c:13)] : this is a warn log
+[ERROR Thu Mar  7 17:58:54 2013 (app.c:14)] : this is an error log
+[FATAL Thu Mar  7 17:58:54 2013 (app.c:15)] : this is a fatal log</code></pre>
+</div></div>
+</div>
+<div class="sect2">
+<h3 id="_getting_a_logger">3.2. Getting A Logger</h3>
+<div class="paragraph"><p>A logger is the main entity used for logging requests. Before any log requests
+can be made, first, it is necessary to get a logger from the framework and pass
+into subsequent calls to logging functions. Use <code>lmk_get_logger</code> to create or
+retrieve an existing logger.</p></div>
+<div class="listingblock">
+<div class="title">API</div>
+<div class="content">
+<pre><code>lmk_logger *lmk_get_logger(const char *name);</code></pre>
+</div></div>
+<div class="listingblock">
+<div class="title">Example</div>
+<div class="content">
+<pre><code>lmk_logger *logger = lmk_get_logger("logger");</code></pre>
+</div></div>
+<div class="paragraph"><p>The <code>lmk_get_logger</code> is invoked with the intended name of the logger.
+If a logger with a given name exists (i.e. from a previous call to <code>lmk_get_logger</code>),
+the same logger is returned, otherwise a new logger is created . A <code>NULL</code> logger name
+is not allowed. The <code>lmk_get_logger</code> returns <code>NULL</code> if it cannot perform the
+requested operation.</p></div>
+</div>
+<div class="sect2">
+<h3 id="_setting_the_log_level">3.3. Setting The Log Level</h3>
+<div class="paragraph"><p>A logger can be assigned a log level that is used to enable or disable a log request.
+An enabled log request means it will be logged, otherwise it will be ignored.
+A logical hierarchy of levels is used in determining how log requests are enabled.</p></div>
+<div class="listingblock">
+<div class="title">Log level hierarchy</div>
+<div class="content">
+<pre><code>TRACE &lt; DEBUG &lt; INFO &lt; WARN &lt; ERROR &lt; FATAL</code></pre>
+</div></div>
+<div class="paragraph"><p>As a general rule, if the user log request has level u, and the logger has log
+level l, the log request is enabled (i.e. not filtered), if u &gt;= l. As an example,
+if the logger&#8217;s log level is INFO, user log requests with level INFO, WARN, ERROR, and
+FATAL will be logged while DEBUG and TRACE will be ignored.</p></div>
+<div class="paragraph"><p>To change the log level, use the <code>lmk_set_log_level</code> function.</p></div>
+<div class="listingblock">
+<div class="title">API</div>
+<div class="content">
+<pre><code>void lmk_set_log_level(lmk_logger *logger, int log_level);
+int lmk_get_log_level(lmk_logger *logger);</code></pre>
+</div></div>
+<div class="paragraph"><p><code>log_level</code> can be one of the following values :</p></div>
+<div class="listingblock">
+<div class="title">Log Levels</div>
+<div class="content">
+<pre><code>LMK_LOG_LEVEL_TRACE
+LMK_LOG_LEVEL_DEBUG
+LMK_LOG_LEVEL_INFO
+LMK_LOG_LEVEL_WARN
+LMK_LOG_LEVEL_ERROR
+LMK_LOG_LEVEL_FATAL
+LMK_LOG_LEVEL_OFF</code></pre>
+</div></div>
+<div class="paragraph"><p>By default, loggers have log level set to <code>LMK_LOG_LEVEL_TRACE</code> , effectively
+enabling all log requests. The current log level of a logger can be retrieved using
+the <code>lmk_get_log_level</code> function.</p></div>
+</div>
+<div class="sect2">
+<h3 id="_making_log_requests">3.4. Making Log Requests</h3>
+<div class="paragraph"><p>To a log a message with specific log level, use the following API macros. The
+macro name has an implied log level, i.e. using <code>LMK_LOG_DEBUG</code> has an implied log
+level of <code>LMK_LOG_LEVEL_DEBUG</code>. These macros accept arguments similar to <code>fprintf</code>.</p></div>
+<div class="listingblock">
+<div class="title">API</div>
+<div class="content">
+<pre><code>LMK_LOG_TRACE(logger, format...)
+LMK_LOG_DEBUG(logger, format...)
+LMK_LOG_INFO(logger, format...)
+LMK_LOG_WARN(logger, format...)
+LMK_LOG_INFO(logger, format...)
+LMK_LOG_FATAL(logger, format...)
+LMK_IS_LOG_ENABLED(logger_or_handler, level)</code></pre>
+</div></div>
+<div class="listingblock">
+<div class="title">Example</div>
+<div class="content">
+<pre><code>LMK_LOG_INFO(logger, "this is an info log");
+LMK_LOG_INFO(logger, "this is an info log with integer param : %d", 1024);</code></pre>
+</div></div>
+<div class="paragraph"><p>The macro <code>LMK_IS_LOG_ENABLED</code> can be used to verify if the given logger of
+handler can log the given log level.</p></div>
+</div>
+<div class="sect2">
+<h3 id="_log_handlers">3.5. Log Handlers</h3>
+<div class="paragraph"><p>A logger uses one or more handlers to do the actual logging to a specific interface.
+In the current version, the framework supports console (writes to stdout),
+file (writes to file), and socket log handler types (writes a remote datagram
+socket listener).</p></div>
+</div>
+<div class="sect2">
+<h3 id="_attaching_log_handlers">3.6. Attaching Log Handlers</h3>
+<div class="paragraph"><p>To use a log handler , first, it must be created or retrieved (if it already
+exists) using <code>lmk_get_xxx_log_handler</code>. It is then attach it to one o</p></div>
+<div class="paragraph"><p>A log handler can be attached to multiple loggers. To detach a log handler from
+a logger, use the  <code>lmk_detach_log_handler</code> function.</p></div>
+<div class="paragraph"><p>By default, the console log handler is created and attached when a logger is
+created. There is only and only one instance of console log handler and it can be
+retrieved using <code>lmk_get_console_log_handler</code>.</p></div>
+<div class="listingblock">
+<div class="title">API</div>
+<div class="content">
+<pre><code>lmk_log_handler *lmk_get_console_log_handler();
+lmk_log_handler *lmk_get_file_log_handler(const char *name, const char *filename);
+int lmk_attach_log_handler(lmk_logger *logger, lmk_log_handler *handler);
+int lmk_detach_log_handler(lmk_logger *logger, lmk_log_handler *handler);
+lmk_log_handler *lmk_get_socket_log_handler(const char* name);
+void lmk_attach_log_listener(lmk_log_handler *handler, const char *host, int port);</code></pre>
+</div></div>
+<div class="listingblock">
+<div class="title">File Log Handler Example</div>
+<div class="content">
+<pre><code>#include &lt;stdlib.h&gt;
+#include "logmoko.h"
+
+int main(int argc, char *argv[]) {
+    lmk_logger *logger = lmk_get_logger("mylogger");
+    lmk_log_handler *flh = lmk_get_file_log_handler("file-handler", "myapp.log");
+
+    lmk_attach_log_handler(logger, flh);
+
+    LMK_LOG_TRACE(logger, "this is a trace log");
+    LMK_LOG_DEBUG(logger, "this is a debug log");
+    LMK_LOG_INFO(logger, "this is an info log");
+    LMK_LOG_WARN(logger, "this is a warn log");
+    LMK_LOG_ERROR(logger, "this is an error log");
+    LMK_LOG_FATAL(logger, "this is a fatal log");
+
+    lmk_dump_loggers();
+
+    lmk_destroy();
+    return EXIT_SUCCESS;
+}</code></pre>
+</div></div>
+<div class="listingblock">
+<div class="title">Socket Log Handler Example</div>
+<div class="content">
+<pre><code>#include &lt;stdlib.h&gt;
+#include &lt;logmoko.h&gt;
+
+int main(int argc, char *argv[]) {
+    lmk_logger *logger;
+    lmk_log_handler *handler;
+
+    logger = lmk_get_logger("logger");
+    handler = lmk_get_socket_log_handler("socket");
+    lmk_attach_log_listener(handler, "localhost", 9000);
+    lmk_attach_log_handler(logger, handler);
+
+    LMK_LOG_TRACE(logger, "this is a trace log");
+    LMK_LOG_DEBUG(logger, "this is a debug log");
+    LMK_LOG_INFO(logger, "this is an info log");
+    LMK_LOG_WARN(logger, "this is a warn log");
+    LMK_LOG_ERROR(logger, "this is an error log");
+    LMK_LOG_FATAL(logger, "this is a fatal log");
+
+    lmk_destroy();
+    return EXIT_SUCCESS;
+}</code></pre>
+</div></div>
+<div class="paragraph"><p>A simple UDP listener can be setup using the <code>nc</code> utility in Unix. Before
+running the example app, run the following command in a separate terminal.</p></div>
+<div class="listingblock">
+<div class="content">
+<pre><code>$ nc -l -u localhost 9000</code></pre>
+</div></div>
+</div>
+<div class="sect2">
+<h3 id="_setting_the_handler_log_level">3.7. Setting The Handler Log Level</h3>
+<div class="paragraph"><p>A log handler also has log level that is used to further filter out
+log requests. An enabled log request (i.e. requested log level
+is higher than the logger&#8217;s log level), will still be discarded if the log
+handler&#8217;s log level is more restrictive than the logger&#8217;s. Use the
+<code>lmk_set_handler_log_level</code> function to set the handler&#8217;s log level.</p></div>
+<div class="listingblock">
+<div class="title">API</div>
+<div class="content">
+<pre><code>void lmk_set_handler_log_level(lmk_log_handler *handler, int log_level);
+int lmk_get_handler_log_level(lmk_log_handler *handler) ;</code></pre>
+</div></div>
+<div class="listingblock">
+<div class="title">Example :</div>
+<div class="content">
+<pre><code>lmk_log_handler *handler;
+lmk_set_handler_log_level(handler, LMK_LOG_LEVEL_DEBUG);</code></pre>
+</div></div>
+<div class="paragraph"><p>By default, log handlers are created with log level set to LMK_LOG_LEVEL_TRACE.</p></div>
+</div>
+<div class="sect2">
+<h3 id="_destroying_the_framework">3.8. Destroying The Framework</h3>
+<div class="paragraph"><p>To destroy the framework, use the <code>lmk_destroy</code>. This will destroy all
+the loggers and handlers and release all the resources the framework is using.
+Note however that the framework was not explicitly initialized in the examples.
+This is intentional. A call to any API will automatically initialize it.
+However, to make it more explicit in the user code, the <code>lmk_init</code> function
+can be invoked safely.</p></div>
+<div class="paragraph"><p>A logger or log handler can be explicitly destroyed using <code>lmk_destroy_logger</code>
+and <code>lmk_destroy_handler</code>, respectively. A log handler cannot be destroyed if
+there are still loggers referencing it.</p></div>
+<div class="listingblock">
+<div class="title">API</div>
+<div class="content">
+<pre><code>void lmk_init() ;
+void lmk_destroy();
+void lmk_destroy_logger(lmk_logger **logger);
+void lmk_destroy_handler(lmk_log_handler **handler);</code></pre>
+</div></div>
+<div class="paragraph"><p>Note that a pointer address is passed in the destroy functions.</p></div>
+</div>
+<div class="sect2">
+<h3 id="_log_format">3.9. Log Format</h3>
+<div class="paragraph"><p>In the current version, the log output is fixed to the following format :</p></div>
+<div class="listingblock">
+<div class="title">Log Format</div>
+<div class="content">
+<pre><code>&lt;log level&gt; &lt;timestamp&gt; &lt;filename&gt;:&lt;line number&gt; &lt;logger name&gt; : &lt;log message&gt;</code></pre>
+</div></div>
+</div>
+<div class="sect2">
+<h3 id="_displaying_loggers">3.10. Displaying Loggers</h3>
+<div class="paragraph"><p>The <code>lmk_dump_loggers</code> can be used to print the loggers and log handlers to
+the standard output.</p></div>
+<div class="listingblock">
+<div class="title">API</div>
+<div class="content">
+<pre><code>void lmk_dump_loggers();</code></pre>
+</div></div>
+<div class="listingblock">
+<div class="title">Example Output</div>
+<div class="content">
+<pre><code>[Logmoko Entities Dump Begin]
++-[Log Handlers]
+    +-handler[name = handler, type = FILE, level = TRACE, logger-refs = 2]
++-[Loggers]
+    +-logger[name = logger1, level = TRACE]
+        +-attached handler[name = handler]
+    +-logger[name = logger2, level = TRACE]
+        +-attached handler[name = handler]
+[Logmoko Entities Dump End]</code></pre>
+</div></div>
+</div>
+<div class="sect2">
+<h3 id="_configuration">3.11. Configuration</h3>
+<div class="paragraph"><p>In this version of Logmoko, there is no configuration file used. All the logger
+and handler setup are done programmatically.</p></div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_development">4. Development</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Please submit bugs or feature requests in <a href="http://github.com/jecklgamis/logmoko.git">http://github.com/jecklgamis/logmoko.git</a>,
+or drop me an email at <a href="mailto:jecklgamis@gmail.com">jecklgamis@gmail.com</a>.</p></div>
+</div>
+</div>
+</div>
+<div id="footnotes"><hr /></div>
+<div id="footer">
+<div id="footer-text">
+Last updated 2013-03-08 08:59:21 EST
+</div>
+</div>
+</body>
+</html>
