@@ -44,7 +44,7 @@ AC_FUNC_MALLOC
 #AC_CHECK_FUNCS()
 
 # Configuration files
-AC_CONFIG_FILES([Makefile src/main/Makefile src/test/Makefile src/examples/Makefile])
+AC_CONFIG_FILES([Makefile src/main/Makefile src/test/Makefile src/examples/Makefile docs/Makefile])
 
 AC_OUTPUT
 
