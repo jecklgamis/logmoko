@@ -1,0 +1,351 @@
+Logmoko User Guide
+==================
+Jerrico Gamis <jecklgamis@gmail.com> 
+:Author Initials: JG
+:toc:
+:icons:
+:numbered:
+:website: http://github.com/jecklgamis/logmoko/
+
+Introduction
+------------
+
+Logmoko is a small logging framework for C.  It allows user to control which log 
+statements are logged based on a configured log level and to which interface 
+(e.g. console, file, remote connection, etc).
+
+Logmoko was developed from a refactored logging facility used in RCUNIT, a C 
+unit testing framework.Logmoko is free, you can use it in accordance with the 
+terms of The MIT License.
+
+Installing Logmoko
+------------------
+
+Installing from Source
+~~~~~~~~~~~~~~~~~~~~~~
+--------
+$ git clone git@github.com:jecklgamis/logmoko.git
+$ ./autogen.sh
+$ ./configure
+$ make check
+$ make all
+$ sudo make install
+--------
+
+Getting Started
+---------------
+
+A Simple Example
+~~~~~~~~~~~~~~~~
+
+The code below exemplifies a simple logging scenario.
+
+.Example
+--------
+#include <stdlib.h>
+#include "logmoko.h"
+
+int main(int argc, char *argv[]) {
+    lmk_logger *logger = lmk_get_logger("mylogger");
+    lmk_log_handler *flh = lmk_get_file_log_handler("file-handler", "myapp.log");
+
+    lmk_attach_log_handler(logger, flh);
+
+    LMK_LOG_TRACE(logger, "this is a trace log");
+    LMK_LOG_DEBUG(logger, "this is a debug log");
+    LMK_LOG_INFO(logger, "this is an info log");
+    LMK_LOG_WARN(logger, "this is a warn log");
+    LMK_LOG_ERROR(logger, "this is an error log");
+    LMK_LOG_FATAL(logger, "this is a fatal log");
+
+    lmk_destroy();
+    return EXIT_SUCCESS;
+}
+--------
+
+--------
+$ gcc -o myapp myapp.c -llogmoko
+--------
+
+.Example Output
+--------
+[TRACE Thu Mar  7 17:58:54 2013 (app.c:10)] : this is a trace log
+[DEBUG Thu Mar  7 17:58:54 2013 (app.c:11)] : this is a debug log
+[INFO  Thu Mar  7 17:58:54 2013 (app.c:12)] : this is an info log
+[WARN  Thu Mar  7 17:58:54 2013 (app.c:13)] : this is a warn log
+[ERROR Thu Mar  7 17:58:54 2013 (app.c:14)] : this is an error log
+[FATAL Thu Mar  7 17:58:54 2013 (app.c:15)] : this is a fatal log
+--------
+
+Getting A Logger
+~~~~~~~~~~~~~~~~
+A logger is the main entity used for logging requests. Before any log requests 
+can be made, first, it is necessary to get a logger from the framework and pass
+into subsequent calls to logging functions. Use `lmk_get_logger` to create or 
+retrieve an existing logger.
+
+.API
+--------
+lmk_logger *lmk_get_logger(const char *name);
+--------
+
+.Example
+--------
+lmk_logger *logger = lmk_get_logger("logger");
+--------
+
+The `lmk_get_logger` is invoked with the intended name of the logger. 
+If a logger with a given name exists (i.e. from a previous call to `lmk_get_logger`), 
+the same logger is returned, otherwise a new logger is created . A `NULL` logger name 
+is not allowed. The `lmk_get_logger` returns `NULL` if it cannot perform the 
+requested operation.
+
+Setting The Log Level
+~~~~~~~~~~~~~~~~~~~~~
+A logger can be assigned a log level that is used to enable or disable a log request.
+An enabled log request means it will be logged, otherwise it will be ignored.
+A logical hierarchy of levels is used in determining how log requests are enabled.
+
+.Log level hierarchy
+--------
+TRACE < DEBUG < INFO < WARN < ERROR < FATAL
+--------
+
+As a general rule, if the user log request has level u, and the logger has log 
+level l, the log request is enabled (i.e. not filtered), if u >= l. As an example, 
+if the logger's log level is INFO, user log requests with level INFO, WARN, ERROR, and
+FATAL will be logged while DEBUG and TRACE will be ignored.
+
+To change the log level, use the `lmk_set_log_level` function.
+
+.API
+--------
+void lmk_set_log_level(lmk_logger *logger, int log_level);
+int lmk_get_log_level(lmk_logger *logger);
+--------
+
+`log_level` can be one of the following values :
+
+.Log Levels
+--------
+LMK_LOG_LEVEL_TRACE 
+LMK_LOG_LEVEL_DEBUG 
+LMK_LOG_LEVEL_INFO
+LMK_LOG_LEVEL_WARN 
+LMK_LOG_LEVEL_ERROR
+LMK_LOG_LEVEL_FATAL
+LMK_LOG_LEVEL_OFF
+--------
+
+By default, loggers have log level set to `LMK_LOG_LEVEL_TRACE` , effectively 
+enabling all log requests. The current log level of a logger can be retrieved using
+the `lmk_get_log_level` function.
+
+Making Log Requests
+~~~~~~~~~~~~~~~~~~~
+To a log a message with specific log level, use the following API macros. The 
+macro name has an implied log level, i.e. using `LMK_LOG_DEBUG` has an implied log 
+level of `LMK_LOG_LEVEL_DEBUG`. These macros accept arguments similar to `fprintf`.
+
+.API
+---------
+LMK_LOG_TRACE(logger, format...)
+LMK_LOG_DEBUG(logger, format...)
+LMK_LOG_INFO(logger, format...)
+LMK_LOG_WARN(logger, format...)
+LMK_LOG_INFO(logger, format...)
+LMK_LOG_FATAL(logger, format...)
+LMK_IS_LOG_ENABLED(logger_or_handler, level)
+---------
+
+.Example
+---------
+LMK_LOG_INFO(logger, "this is an info log");
+LMK_LOG_INFO(logger, "this is an info log with integer param : %d", 1024);
+---------
+
+The macro `LMK_IS_LOG_ENABLED` can be used to verify if the given logger of 
+handler can log the given log level.
+
+Log Handlers
+~~~~~~~~~~~~
+A logger uses one or more handlers to do the actual logging to a specific interface. 
+In the current version, the framework supports console (writes to stdout), 
+file (writes to file), and socket log handler types (writes a remote datagram 
+socket listener).
+
+Attaching Log Handlers
+~~~~~~~~~~~~~~~~~~~~~~
+To use a log handler , first, it must be created or retrieved (if it already
+exists) using `lmk_get_xxx_log_handler`. It is then attach it to one o
+
+A log handler can be attached to multiple loggers. To detach a log handler from 
+a logger, use the  `lmk_detach_log_handler` function.
+
+    
+By default, the console log handler is created and attached when a logger is 
+created. There is only and only one instance of console log handler and it can be
+retrieved using `lmk_get_console_log_handler`.
+
+
+
+.API
+--------
+lmk_log_handler *lmk_get_console_log_handler();
+lmk_log_handler *lmk_get_file_log_handler(const char *name, const char *filename);
+int lmk_attach_log_handler(lmk_logger *logger, lmk_log_handler *handler);
+int lmk_detach_log_handler(lmk_logger *logger, lmk_log_handler *handler);
+lmk_log_handler *lmk_get_socket_log_handler(const char* name); 
+void lmk_attach_log_listener(lmk_log_handler *handler, const char *host, int port);
+--------
+
+.File Log Handler Example
+---------
+#include <stdlib.h>
+#include "logmoko.h"
+
+int main(int argc, char *argv[]) {
+    lmk_logger *logger = lmk_get_logger("mylogger");
+    lmk_log_handler *flh = lmk_get_file_log_handler("file-handler", "myapp.log");
+
+    lmk_attach_log_handler(logger, flh);
+
+    LMK_LOG_TRACE(logger, "this is a trace log");
+    LMK_LOG_DEBUG(logger, "this is a debug log");
+    LMK_LOG_INFO(logger, "this is an info log");
+    LMK_LOG_WARN(logger, "this is a warn log");
+    LMK_LOG_ERROR(logger, "this is an error log");
+    LMK_LOG_FATAL(logger, "this is a fatal log");
+    
+    lmk_dump_loggers();
+
+    lmk_destroy();
+    return EXIT_SUCCESS;
+}
+--------
+
+.Socket Log Handler Example
+--------
+#include <stdlib.h>
+#include <logmoko.h>
+
+int main(int argc, char *argv[]) {
+    lmk_logger *logger;
+    lmk_log_handler *handler;
+
+    logger = lmk_get_logger("logger");
+    handler = lmk_get_socket_log_handler("socket");
+    lmk_attach_log_listener(handler, "localhost", 9000);
+    lmk_attach_log_handler(logger, handler);
+    
+    LMK_LOG_TRACE(logger, "this is a trace log");
+    LMK_LOG_DEBUG(logger, "this is a debug log");
+    LMK_LOG_INFO(logger, "this is an info log");
+    LMK_LOG_WARN(logger, "this is a warn log");
+    LMK_LOG_ERROR(logger, "this is an error log");
+    LMK_LOG_FATAL(logger, "this is a fatal log");  
+    
+    lmk_destroy();
+    return EXIT_SUCCESS;
+}
+--------
+
+A simple UDP listener can be setup using the `nc` utility in Unix. Before 
+running the example app, run the following command in a separate terminal.
+
+--------
+$ nc -l -u localhost 9000
+--------
+    
+Setting The Handler Log Level
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A log handler also has log level that is used to further filter out
+log requests. An enabled log request (i.e. requested log level
+is higher than the logger's log level), will still be discarded if the log
+handler's log level is more restrictive than the logger's. Use the
+`lmk_set_handler_log_level` function to set the handler's log level.
+
+.API
+--------
+void lmk_set_handler_log_level(lmk_log_handler *handler, int log_level);
+int lmk_get_handler_log_level(lmk_log_handler *handler) ;
+--------
+
+.Example :
+--------
+lmk_log_handler *handler;
+lmk_set_handler_log_level(handler, LMK_LOG_LEVEL_DEBUG);
+--------
+By default, log handlers are created with log level set to LMK_LOG_LEVEL_TRACE.
+
+Destroying The Framework
+~~~~~~~~~~~~~~~~~~~~~~~~
+To destroy the framework, use the `lmk_destroy`. This will destroy all 
+the loggers and handlers and release all the resources the framework is using. 
+Note however that the framework was not explicitly initialized in the examples.
+This is intentional. A call to any API will automatically initialize it. 
+However, to make it more explicit in the user code, the `lmk_init` function
+can be invoked safely.
+
+A logger or log handler can be explicitly destroyed using `lmk_destroy_logger`
+and `lmk_destroy_handler`, respectively. A log handler cannot be destroyed if
+there are still loggers referencing it.
+
+.API
+--------
+void lmk_init() ;
+void lmk_destroy();
+void lmk_destroy_logger(lmk_logger **logger);
+void lmk_destroy_handler(lmk_log_handler **handler);
+--------
+
+Note that a pointer address is passed in the destroy functions.
+
+Log Format
+~~~~~~~~~~
+
+In the current version, the log output is fixed to the following format :
+
+.Log Format
+--------
+<log level> <timestamp> <filename>:<line number> <logger name> : <log message>
+--------
+
+Displaying Loggers
+~~~~~~~~~~~~~~~~~~
+The `lmk_dump_loggers` can be used to print the loggers and log handlers to
+the standard output.
+
+.API
+--------
+void lmk_dump_loggers();
+--------
+
+.Example Output
+--------
+[Logmoko Entities Dump Begin]
++-[Log Handlers]
+    +-handler[name = handler, type = FILE, level = TRACE, logger-refs = 2]
++-[Loggers]
+    +-logger[name = logger1, level = TRACE]
+        +-attached handler[name = handler]
+    +-logger[name = logger2, level = TRACE]
+        +-attached handler[name = handler]
+[Logmoko Entities Dump End]
+--------
+
+Configuration
+~~~~~~~~~~~~~   
+In this version of Logmoko, there is no configuration file used. All the logger
+and handler setup are done programmatically.
+
+Development
+-----------
+Please submit bugs or feature requests in http://github.com/jecklgamis/logmoko.git,
+or drop me an email at jecklgamis@gmail.com.
+
+
+
+
+
