@@ -1,30 +1,3 @@
-/*
- * The MIT License (MIT)
- *
- * Logmoko - A logging framework for C
- * Copyright 2013 Jerrico Gamis <jecklgamis@gmail.com>
- *
- * Permission is hereby granted, free of charge, to any person obtaining
- * a copy of this software and associated documentation files (the
- * "Software"), to deal in the Software without restriction, including
- * without limitation the rights to use, copy, modify, merge, publish,
- * distribute, sublicense, and sell copies of the Software, and to
- * permit persons to whom the Software is furnished to do so, subject to
- * the following conditions:
- *
- * The above copyright notice and this permission notice shall be
- * included in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
- * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
- * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
- * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- */
-
-
 #include "logmoko.h"
 
 extern void lmk_socket_log_handler_init(lmk_log_handler *handler, void *param);
@@ -38,10 +11,6 @@ extern void lmk_file_log_handler_init(lmk_log_handler *handler, void *param);
 extern void lmk_file_log_handler_destroy(lmk_log_handler *handler, void *param);
 
 extern void lmk_file_log_handler_log_impl(lmk_log_handler *handler, void *param);
-
-extern void lmk_console_log_handler_init(lmk_log_handler *handler, void *param);
-
-extern void lmk_console_log_handler_destroy(lmk_log_handler *handler, void *param);
 
 extern void lmk_console_log_handler_log_impl(lmk_log_handler *handler, void *param);
 
@@ -72,13 +41,11 @@ LMK_API lmk_log_handler *lmk_get_console_log_handler() {
     lmk_console_log_handler *clh = NULL;
     lmk_log_handler *handler = NULL;
     lmk_init();
-    if ((handler = lmk_srch_log_handler_by_name("console")) != NULL) {
+    if ((handler = lmk_search_log_handler_by_name("console")) != NULL) {
         return handler;
     }
-    if ((clh = (lmk_console_log_handler *) lmk_malloc(
-            sizeof(lmk_console_log_handler))) != NULL) {
-        lmk_init_base_log_handler(&clh->base, LMK_LOG_HANDLER_TYPE_CONSOLE,
-                                  lmk_console_log_handler_init, lmk_console_log_handler_destroy,
+    if ((clh = (lmk_console_log_handler *) lmk_malloc(sizeof(lmk_console_log_handler))) != NULL) {
+        lmk_init_base_log_handler(&clh->base, LMK_LOG_HANDLER_TYPE_CONSOLE, NULL, NULL,
                                   lmk_console_log_handler_log_impl, "console");
         lmk_insert_list(&g_lmk_handler_list, &clh->base.link);
         clh->base.init(&clh->base, NULL);
@@ -92,7 +59,7 @@ LMK_API lmk_log_handler *lmk_get_file_log_handler(const char *name, const char *
     lmk_log_handler *handler = NULL;
     lmk_init();
     if (name != NULL) {
-        if ((handler = lmk_srch_log_handler_by_name(name)) != NULL) {
+        if ((handler = lmk_search_log_handler_by_name(name)) != NULL) {
             return handler;
         }
         if ((flh = (lmk_file_log_handler *) lmk_malloc(
@@ -115,7 +82,7 @@ LMK_API lmk_log_handler *lmk_get_socket_log_handler(const char *name) {
     lmk_log_handler *handler;
     lmk_init();
     if (name != NULL) {
-        if ((handler = lmk_srch_log_handler_by_name(name)) != NULL) {
+        if ((handler = lmk_search_log_handler_by_name(name)) != NULL) {
             return handler;
         }
         if ((slh = (lmk_socket_log_handler *) lmk_malloc(

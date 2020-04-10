@@ -1,74 +1,48 @@
-/*
- * The MIT License (MIT)
- *
- * Logmoko - A logging framework for C
- * Copyright 2013 Jerrico Gamis <jecklgamis@gmail.com>
- *
- * Permission is hereby granted, free of charge, to any person obtaining
- * a copy of this software and associated documentation files (the
- * "Software"), to deal in the Software without restriction, including
- * without limitation the rights to use, copy, modify, merge, publish,
- * distribute, sublicense, and sell copies of the Software, and to
- * permit persons to whom the Software is furnished to do so, subject to
- * the following conditions:
- *
- * The above copyright notice and this permission notice shall be
- * included in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
- * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
- * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
- * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- */
-
 #include "logmoko.h"
 
 extern lmk_list g_lmk_logger_list;
 
-extern int lmk_init_logger(lmk_logger *logger);
+static int lmk_init_logger(lmk_logger *logger);
 
 extern int lmk_init_log_handler(lmk_log_handler *handler);
 
 int lmk_log_impl(lmk_logger *logger, const char *file_name, const int line_no,
                  int log_level, const char *data);
 
-/* Retrieves a named logger or creates a new one if non-existent */
+/* Retrieves a named logger or creates a new one if it does not exist */
 LMK_API lmk_logger *lmk_get_logger(const char *name) {
     lmk_logger *logger = NULL;
     lmk_init();
-    if (name != NULL) {
-        if ((logger = lmk_srch_logger_by_name(name)) != NULL) {
-            return logger;
+    if (!name)
+        return NULL;
+    if ((logger = lmk_search_logger_by_name(name)) != NULL) {
+        return logger;
+    }
+    if ((logger = (lmk_logger *) lmk_malloc(sizeof(lmk_logger))) != NULL) {
+        lmk_init_logger(logger);
+        int name_len = strlen(name);
+        if ((logger->name = lmk_malloc(name_len)) != NULL) {
+            strncpy((void *) logger->name, name, name_len);
+            logger->name[name_len] = '\0';
         }
-        if ((logger = (lmk_logger *) lmk_malloc(sizeof(lmk_logger))) != NULL) {
-            lmk_init_logger(logger);
-            int name_len = strlen(name);
-            if ((logger->name = lmk_malloc(name_len)) != NULL) {
-                strncpy((void *) logger->name, name, name_len);
-                logger->name[name_len] = '\0';
-            }
-            lmk_init_list(&logger->handler_ref_list);
-            lmk_insert_list(&g_lmk_logger_list, &logger->link);
-            lmk_attach_log_handler(logger, lmk_get_console_log_handler());
-        }
+        lmk_init_list(&logger->handler_ref_list);
+        lmk_insert_list(&g_lmk_logger_list, &logger->link);
     }
     return logger;
 }
 
-int lmk_init_logger(lmk_logger *logger) {
-    if (logger != NULL) {
-        if (!logger->initialized) {
-            memset(logger, 0x00, sizeof(lmk_logger));
-            lmk_init_list(&logger->link);
-            lmk_init_list(&logger->handler_ref_list);
-            memset(logger->log_buff, 0, LMK_LOG_BUFFER_SIZE);
-            logger->log_level = LMK_LOG_LEVEL_TRACE;
-            logger->initialized = 1;
-            LMK_INIT_MUTEX(logger->log_lock);
-        }
+static int lmk_init_logger(lmk_logger *logger) {
+    if (!logger) {
+        return LMK_E_NG;
+    }
+    if (!logger->initialized) {
+        memset(logger, 0, sizeof(lmk_logger));
+        lmk_init_list(&logger->link);
+        lmk_init_list(&logger->handler_ref_list);
+        memset(logger->log_buff, 0, LMK_LOG_BUFFER_SIZE);
+        logger->log_level = LMK_LOG_LEVEL_TRACE;
+        logger->initialized = 1;
+        LMK_INIT_MUTEX(logger->log_lock);
     }
     return LMK_E_OK;
 }
@@ -76,7 +50,7 @@ int lmk_init_logger(lmk_logger *logger) {
 LMK_API int lmk_destroy_logger(lmk_logger **logger_addr) {
     lmk_list *cursor = NULL;
     lmk_init();
-    if (logger_addr == NULL || *logger_addr == NULL) {
+    if (!logger_addr || !*logger_addr) {
         return LMK_E_NG;
     }
     lmk_logger *logger = *logger_addr;
@@ -103,8 +77,9 @@ LMK_API int lmk_destroy_logger(lmk_logger **logger_addr) {
 
 LMK_API void lmk_set_log_level(lmk_logger *logger, int log_level) {
     lmk_init();
-    if (logger != NULL && (log_level >= LMK_LOG_LEVEL_TRACE && log_level
-                                                               <= LMK_LOG_LEVEL_OFF)) {
+    if (!logger)
+        return;
+    if (log_level >= LMK_LOG_LEVEL_TRACE && log_level <= LMK_LOG_LEVEL_OFF) {
         logger->log_level = log_level;
     }
 }
@@ -117,8 +92,8 @@ LMK_API int lmk_get_log_level(lmk_logger *logger) {
     return LMK_LOG_LEVEL_UNKNOWN;
 }
 
-lmk_log_handler_ref *lmk_srch_log_handler_ref(lmk_logger *logger,
-                                              lmk_log_handler *handler) {
+lmk_log_handler_ref *lmk_search_log_handler_ref(lmk_logger *logger,
+                                                lmk_log_handler *handler) {
     if (logger != NULL && handler != NULL) {
         lmk_list *cursor = NULL;
 
@@ -132,8 +107,8 @@ lmk_log_handler_ref *lmk_srch_log_handler_ref(lmk_logger *logger,
     return NULL;
 }
 
-lmk_log_handler_ref *lmk_srch_log_handler_ref_by_name(lmk_logger *logger,
-                                                      const char *name) {
+lmk_log_handler_ref *lmk_search_log_handler_ref_by_name(lmk_logger *logger,
+                                                        const char *name) {
     lmk_list *cursor = NULL;
     if (logger == NULL || name == NULL) {
         return NULL;
@@ -149,7 +124,7 @@ lmk_log_handler_ref *lmk_srch_log_handler_ref_by_name(lmk_logger *logger,
 }
 
 int lmk_is_log_handler_attached(lmk_logger *logger, lmk_log_handler *handler) {
-    return (lmk_srch_log_handler_ref(logger, handler) != NULL) ? 1 : 0;
+    return (lmk_search_log_handler_ref(logger, handler) != NULL) ? 1 : 0;
 }
 
 LMK_API int lmk_attach_log_handler(lmk_logger *logger, lmk_log_handler *handler) {
@@ -183,7 +158,7 @@ LMK_API int lmk_detach_log_handler(lmk_logger *logger, lmk_log_handler *handler)
     fprintf(stdout, "Detaching handler %s from logger %s (logger ref = %u)\n", handler->name, logger->name, handler->nr_logger_ref);
 #endif
 
-    handler_ref = lmk_srch_log_handler_ref(logger, handler);
+    handler_ref = lmk_search_log_handler_ref(logger, handler);
     if (handler_ref == NULL) {
 #if LMK_DEBUG
         fprintf(stdout, "Handler %s is not attached to logger %s \n", handler->name, logger->name);
@@ -207,7 +182,7 @@ LMK_API void lmk_log_trace(lmk_logger *logger, const char *file_name,
     lmk_init();
     if (logger != NULL && LMK_IS_LOG_ENABLED(logger, LMK_LOG_LEVEL_TRACE)) {
         LMK_LOCK_MUTEX(logger->log_lock);
-        memset(logger->log_buff, 0x00, LMK_LOG_BUFFER_SIZE);
+        memset(logger->log_buff, 0, LMK_LOG_BUFFER_SIZE);
         va_start(ap, format);
         vsprintf(logger->log_buff, format, ap);
         va_end(ap);
@@ -223,7 +198,7 @@ LMK_API void lmk_log_info(lmk_logger *logger, const char *file_name,
     if (logger != NULL && LMK_IS_LOG_ENABLED(logger, LMK_LOG_LEVEL_INFO)) {
         LMK_LOCK_MUTEX(logger->log_lock);
         va_list ap;
-        memset(logger->log_buff, 0x00, LMK_LOG_BUFFER_SIZE);
+        memset(logger->log_buff, 0, LMK_LOG_BUFFER_SIZE);
         va_start(ap, format);
         vsprintf(logger->log_buff, format, ap);
         va_end(ap);
@@ -239,7 +214,7 @@ LMK_API void lmk_log_debug(lmk_logger *logger, const char *file_name,
     lmk_init();
     if (logger != NULL && LMK_IS_LOG_ENABLED(logger, LMK_LOG_LEVEL_DEBUG)) {
         LMK_LOCK_MUTEX(logger->log_lock);
-        memset(logger->log_buff, 0x00, LMK_LOG_BUFFER_SIZE);
+        memset(logger->log_buff, 0, LMK_LOG_BUFFER_SIZE);
         va_start(ap, format);
         vsprintf(logger->log_buff, format, ap);
         va_end(ap);
@@ -255,7 +230,7 @@ LMK_API void lmk_log_warn(lmk_logger *logger, const char *file_name,
     lmk_init();
     if (logger != NULL && LMK_IS_LOG_ENABLED(logger, LMK_LOG_LEVEL_WARN)) {
         LMK_LOCK_MUTEX(logger->log_lock);
-        memset(logger->log_buff, 0x00, LMK_LOG_BUFFER_SIZE);
+        memset(logger->log_buff, 0, LMK_LOG_BUFFER_SIZE);
         va_start(ap, format);
         vsprintf(logger->log_buff, format, ap);
         va_end(ap);
@@ -271,7 +246,7 @@ LMK_API void lmk_log_error(lmk_logger *logger, const char *file_name,
     lmk_init();
     if (logger != NULL && LMK_IS_LOG_ENABLED(logger, LMK_LOG_LEVEL_ERROR)) {
         LMK_LOCK_MUTEX(logger->log_lock);
-        memset(logger->log_buff, 0x00, LMK_LOG_BUFFER_SIZE);
+        memset(logger->log_buff, 0, LMK_LOG_BUFFER_SIZE);
         va_start(ap, format);
         vsprintf(logger->log_buff, format, ap);
         va_end(ap);
@@ -287,7 +262,7 @@ LMK_API void lmk_log_fatal(lmk_logger *logger, const char *file_name,
     lmk_init();
     if (logger != NULL && LMK_IS_LOG_ENABLED(logger, LMK_LOG_LEVEL_FATAL)) {
         LMK_LOCK_MUTEX(logger->log_lock);
-        memset(logger->log_buff, 0x00, LMK_LOG_BUFFER_SIZE);
+        memset(logger->log_buff, 0, LMK_LOG_BUFFER_SIZE);
         va_start(ap, format);
         vsprintf(logger->log_buff, format, ap);
         va_end(ap);

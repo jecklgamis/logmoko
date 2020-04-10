@@ -1,47 +1,11 @@
-/*
- * The MIT License (MIT)
- *
- * Logmoko - A logging framework for C
- * Copyright 2013 Jerrico Gamis <jecklgamis@gmail.com>
- *
- * Permission is hereby granted, free of charge, to any person obtaining
- * a copy of this software and associated documentation files (the
- * "Software"), to deal in the Software without restriction, including
- * without limitation the rights to use, copy, modify, merge, publish,
- * distribute, sublicense, and sell copies of the Software, and to
- * permit persons to whom the Software is furnished to do so, subject to
- * the following conditions:
- *
- * The above copyright notice and this permission notice shall be
- * included in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
- * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
- * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
- * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- */
-
 #include "logmoko.h"
 
-/** @brief Log level string */
 static const char *g_log_level_str[] = {"TRACE", "DEBUG", "INFO", "WARN", "ERROR", "FATAL", "OFF", "UNKNOWN"};
-
-/** @brief The list of all loggers */
 lmk_list g_lmk_logger_list;
-
-/*** @brief The list of all log handlers */
 lmk_list g_lmk_handler_list;
-
-/** @brief Framework initialization flag */
 static int g_lmk_initialized = 0;
-
-/** @brief the current configuration file */
 const char *g_config_file = NULL;
 
-/** Forward/external declarations */
 const char *lmk_get_log_level_str(int log_level);
 
 extern const char *lmk_get_log_handler_type_str(int type);
@@ -60,64 +24,54 @@ void lmk_init() {
     }
 }
 
-/**
- * @brief Destroys the framework. All the loggers will be detached from the
- * handlers and all handlers will be destroyed.
- */
 LMK_API void lmk_destroy() {
-    lmk_list *cursor;
-    if (g_lmk_initialized) {
-#if LMK_DEBUG
-        lmk_dump_loggers();
-#endif
-        LMK_FOR_EACH_ENTRY(&g_lmk_logger_list, cursor) {
-            lmk_logger *logger = (lmk_logger *) cursor;
-            LMK_SAVE_CURSOR(cursor)
-                lmk_destroy_logger(&logger);
-            LMK_RESTORE_CURSOR(cursor)
-        }
-        /* destroy all log handlers. at this point no loggers should be  referencing any log handlers */
-        LMK_FOR_EACH_ENTRY(&g_lmk_handler_list, cursor) {
-            lmk_log_handler *handler = (lmk_log_handler *) cursor;
-            LMK_SAVE_CURSOR(cursor)
-                lmk_destroy_log_handler(&handler);
-            LMK_RESTORE_CURSOR(cursor)
-        }
-        g_lmk_initialized = 0;
-        g_config_file = NULL;
+    if (!g_lmk_initialized) {
+        return;
     }
+#if LMK_DEBUG
+    lmk_dump_loggers();
+#endif
+    lmk_list *cursor;
+    LMK_FOR_EACH_ENTRY(&g_lmk_logger_list, cursor) {
+        lmk_logger *logger = (lmk_logger *) cursor;
+        LMK_SAVE_CURSOR(cursor)
+            lmk_destroy_logger(&logger);
+        LMK_RESTORE_CURSOR(cursor)
+    }
+    /* destroy all log handlers. at this point no loggers should be  referencing any log handlers */
+    LMK_FOR_EACH_ENTRY(&g_lmk_handler_list, cursor) {
+        lmk_log_handler *handler = (lmk_log_handler *) cursor;
+        LMK_SAVE_CURSOR(cursor)
+            lmk_destroy_log_handler(&handler);
+        LMK_RESTORE_CURSOR(cursor)
+    }
+    g_lmk_initialized = 0;
+    g_config_file = NULL;
 }
 
-/**
- *  @brief Searches a logger from the global list loggers
- *  @param[in] name Logger name
- */
-lmk_logger *lmk_srch_logger_by_name(const char *name) {
+lmk_logger *lmk_search_logger_by_name(const char *name) {
     lmk_list *cursor = NULL;
-    if (name != NULL) {
-        LMK_FOR_EACH_ENTRY(&g_lmk_logger_list, cursor) {
-            lmk_logger *logger = (lmk_logger *) cursor;
-            if (!strcmp(logger->name, name)) {
-                return logger;
-            }
+    if (!name) {
+        return NULL;
+    }
+    LMK_FOR_EACH_ENTRY(&g_lmk_logger_list, cursor) {
+        lmk_logger *logger = (lmk_logger *) cursor;
+        if (!strcmp(logger->name, name)) {
+            return logger;
         }
     }
     return NULL;
 }
 
-/**
- *  @brief Searches a log handler from the global log handlers
- *  @param[in] name Log handler name
- *  TODO separate log handler namespace by type?
- */
-lmk_log_handler *lmk_srch_log_handler_by_name(const char *name) {
+lmk_log_handler *lmk_search_log_handler_by_name(const char *name) {
     lmk_list *cursor = NULL;
-    if (name != NULL) {
-        LMK_FOR_EACH_ENTRY(&g_lmk_handler_list, cursor) {
-            lmk_log_handler *handler = (lmk_log_handler *) cursor;
-            if (!strcmp(name, handler->name)) {
-                return handler;
-            }
+    if (!name) {
+        return NULL;
+    }
+    LMK_FOR_EACH_ENTRY(&g_lmk_handler_list, cursor) {
+        lmk_log_handler *handler = (lmk_log_handler *) cursor;
+        if (!strcmp(name, handler->name)) {
+            return handler;
         }
     }
     return NULL;
@@ -163,17 +117,10 @@ LMK_API void lmk_dump_loggers() {
     }
 }
 
-/**
- *  @brief Retrieves the log level string
- *  @param[in] level Log level
- *  @return log level string
- */
-
 const char *lmk_get_log_level_str(int log_level) {
-    if (!(log_level >= LMK_LOG_LEVEL_TRACE && log_level <= LMK_LOG_LEVEL_OFF)) {
-        log_level = LMK_LOG_LEVEL_UNKNOWN;
-    }
-    return g_log_level_str[log_level];
+    if (log_level >= LMK_LOG_LEVEL_TRACE && log_level <= LMK_LOG_LEVEL_OFF)
+        return g_log_level_str[log_level];
+    return g_log_level_str[LMK_LOG_LEVEL_UNKNOWN];
 }
 
 LMK_API int lmk_get_nr_loggers() {
