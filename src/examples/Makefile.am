@@ -1,8 +1,8 @@
 ## Process this file with automake to produce Makefile.in
 
-noinst_PROGRAMS = my_app socket_log_handler
-my_app_SOURCES = my_app.c
-socket_log_handler_SOURCES = socket_log_handler.c
+noinst_PROGRAMS = example_app example_app_socket
+example_app_SOURCES = example_app.c
+example_app_socket_SOURCES = example_app_socket.c
 
 clean-local:
 	rm -f *.log    

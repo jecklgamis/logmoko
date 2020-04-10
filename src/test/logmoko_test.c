@@ -7,23 +7,17 @@
  *  Verify default log level
  */
 TMK_TEST(lmk_test_create_and_destroy_logger) {
+
     lmk_logger *logger = lmk_get_logger("logger");
     TMK_ASSERT_NOT_NULL(logger);
     TMK_ASSERT_EQUAL(LMK_LOG_LEVEL_TRACE, lmk_get_log_level(logger));
+    TMK_ASSERT_EQUAL(1, lmk_get_nr_loggers());
+    TMK_ASSERT_EQUAL(0, lmk_get_nr_handlers());
+
     lmk_destroy_logger(&logger);
     TMK_ASSERT_NULL(logger);
     TMK_ASSERT_EQUAL(0, lmk_get_nr_loggers());
     lmk_destroy();
-}
-
-/* Verify that a console log handler is added by default */
-TMK_TEST(lmk_test_attached_console_log_handler) {
-    lmk_logger *logger = lmk_get_logger("logger");
-    TMK_ASSERT_NOT_NULL(logger);
-    lmk_log_handler *handler = lmk_find_handler(logger, "console");
-    TMK_ASSERT_NOT_NULL(handler);
-    TMK_ASSERT_EQUAL(1, lmk_get_nr_handlers());
-    lmk_dump_loggers();
 }
 
 /* Verify that logging using a null logger is allowed (no exceptions of what kind)
@@ -197,7 +191,7 @@ TMK_TEST(lmk_test_create_handlers) {
 TMK_TEST(lmk_test_console_log_handler) {
     lmk_log_handler *clh1 = lmk_get_console_log_handler();
     lmk_log_handler *clh2 = lmk_get_console_log_handler();
-    TMK_ASSERT_EQUAL(clh1, clh2);
+    TMK_ASSERT_EQUAL_PTRS(clh1, clh2);
     lmk_destroy();
 }
 
@@ -227,6 +221,8 @@ TMK_TEST(lmk_test_destroy_handler_with_logger_references) {
 
     lmk_log_handler *clh = lmk_get_console_log_handler();
     TMK_ASSERT_NOT_NULL(clh);
+
+    lmk_dump_loggers();
 
     TMK_ASSERT_EQUAL(LMK_E_OK, lmk_attach_log_handler(logger, clh));
     TMK_ASSERT_EQUAL(1, lmk_get_nr_loggers());
@@ -358,7 +354,7 @@ TMK_TEST(lmk_test_destroy_loggers) {
     TMK_ASSERT_EQUAL(2, lmk_get_list_size(&logger1->handler_ref_list));
     TMK_ASSERT_EQUAL(2, lmk_get_list_size(&logger2->handler_ref_list));
 
-    TMK_ASSERT_EQUAL(3, clh->nr_logger_ref);
+    TMK_ASSERT_EQUAL(2, clh->nr_logger_ref);
     TMK_ASSERT_EQUAL(2, flh->nr_logger_ref);
 
     TMK_ASSERT_EQUAL(2, lmk_get_nr_handlers());
@@ -500,7 +496,6 @@ TMK_TEST(lmk_test_socket_log_handler) {
 
 TMK_TEST_FUNCTION_TABLE_START(test_function_table)
                 TMK_INCLUDE_TEST(lmk_test_create_and_destroy_logger) TMK_INCLUDE_TEST(lmk_test_null_logger)
-                TMK_INCLUDE_TEST(lmk_test_attached_console_log_handler)
                 TMK_INCLUDE_TEST(lmk_test_null_logger_name)
                 TMK_INCLUDE_TEST(lmk_test_get_existing_logger)
                 TMK_INCLUDE_TEST(lmk_test_logger_log_levels)
