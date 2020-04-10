@@ -375,48 +375,52 @@ void *log_user_thread_routine1(void *arg) {
     lmk_logger *logger = NULL;
     int id = 0;
     static int nr_log_calls = 0;
-    id = *((int*) arg);
+    id = *((int *) arg);
     logger = lmk_get_logger("logger1");
     while (++nr_log_calls < 1024) {
         LMK_LOG_TRACE(logger, "[id=%d, calls=%d] what you see is what you see", id, nr_log_calls);
     }
     LMK_LOG_TRACE(logger, "[id=%d] Exiting");
+    return NULL;
 }
 
 void *log_user_thread_routine2(void *arg) {
     lmk_logger *logger = NULL;
     int id = 0;
     static int nr_log_calls = 0;
-    id = *((int*) arg);
+    id = *((int *) arg);
     logger = lmk_get_logger("logger1");
     while (++nr_log_calls < 1024) {
         LMK_LOG_TRACE(logger, "[id=%d, calls=%d] keep it simple, simple", id, nr_log_calls);
     }
     LMK_LOG_TRACE(logger, "[id=%d] Exiting");
+    return NULL;
 }
 
 void *log_user_thread_routine3(void *arg) {
     lmk_logger *logger = NULL;
     int id = 0;
     static int nr_log_calls = 0;
-    id = *((int*) arg);
+    id = *((int *) arg);
     logger = lmk_get_logger("logger2");
     while (++nr_log_calls < 1024) {
         LMK_LOG_TRACE(logger, "[id=%d, calls=%d] write once, write again", id, nr_log_calls);
     }
     LMK_LOG_TRACE(logger, "[id=%d] Exiting");
+    return NULL;
 }
 
 void *log_user_thread_routine4(void *arg) {
     lmk_logger *logger = NULL;
     int id = 0;
     static int nr_log_calls = 0;
-    id = *((int*) arg);
+    id = *((int *) arg);
     logger = lmk_get_logger("logger2");
     while (++nr_log_calls < 1024) {
         LMK_LOG_TRACE(logger, "[id=%d, calls=%d] the network is the network", id, nr_log_calls);
     }
     LMK_LOG_TRACE(logger, "[id=%d] Exiting");
+    return NULL;
 }
 
 /*
@@ -427,7 +431,6 @@ void *log_user_thread_routine4(void *arg) {
  *   t1 and t2 use the same logger, logger1
  *   t3 and t4 use the same logger, logger2
  *   logger1 and logger2 share the same file log handler, flh
-/*
  */
 
 TMK_TEST(lmk_test_multiple_threads) {
@@ -456,10 +459,10 @@ TMK_TEST(lmk_test_multiple_threads) {
     int p3 = 3;
     int p4 = 4;
 
-    pthread_create(&t1, NULL, (void*) log_user_thread_routine1, (void*) &p1);
-    pthread_create(&t2, NULL, (void*) log_user_thread_routine2, (void*) &p2);
-    pthread_create(&t3, NULL, (void*) log_user_thread_routine3, (void*) &p3);
-    pthread_create(&t4, NULL, (void*) log_user_thread_routine4, (void*) &p4);
+    pthread_create(&t1, NULL, (void *) log_user_thread_routine1, (void *) &p1);
+    pthread_create(&t2, NULL, (void *) log_user_thread_routine2, (void *) &p2);
+    pthread_create(&t3, NULL, (void *) log_user_thread_routine3, (void *) &p3);
+    pthread_create(&t4, NULL, (void *) log_user_thread_routine4, (void *) &p4);
 
     pthread_join(t1, NULL);
     pthread_join(t2, NULL);
@@ -489,28 +492,28 @@ TMK_TEST(lmk_test_socket_log_handler) {
     LMK_LOG_WARN(logger, "This is a warn log");
     LMK_LOG_ERROR(logger, "This is an error log");
     LMK_LOG_FATAL(logger, "This is a fatal log");
-    
-   TMK_ASSERT_EQUAL(6, slh->nr_log_calls);
+
+    TMK_ASSERT_EQUAL(6, slh->nr_log_calls);
 
     lmk_destroy();
 }
 
 TMK_TEST_FUNCTION_TABLE_START(test_function_table)
-TMK_INCLUDE_TEST(lmk_test_create_and_destroy_logger) TMK_INCLUDE_TEST(lmk_test_null_logger)
-TMK_INCLUDE_TEST(lmk_test_attached_console_log_handler)
-TMK_INCLUDE_TEST(lmk_test_null_logger_name)
-TMK_INCLUDE_TEST(lmk_test_get_existing_logger)
-TMK_INCLUDE_TEST(lmk_test_logger_log_levels)
-TMK_INCLUDE_TEST(lmk_test_create_handlers)
-TMK_INCLUDE_TEST(lmk_test_destroy_handlers)
-TMK_INCLUDE_TEST(lmk_test_destroy_handler_with_logger_references)
-TMK_INCLUDE_TEST(lmk_test_attach_handlers_to_multiple_loggers)
-TMK_INCLUDE_TEST(lmk_test_attach_same_handler)
-TMK_INCLUDE_TEST(lmk_test_destroy_logger)
-TMK_INCLUDE_TEST(lmk_test_destroy_loggers)
-TMK_INCLUDE_TEST(lmk_test_multiple_threads)
-TMK_INCLUDE_TEST(lmk_test_console_log_handler)
-TMK_INCLUDE_TEST(lmk_test_socket_log_handler)
+                TMK_INCLUDE_TEST(lmk_test_create_and_destroy_logger) TMK_INCLUDE_TEST(lmk_test_null_logger)
+                TMK_INCLUDE_TEST(lmk_test_attached_console_log_handler)
+                TMK_INCLUDE_TEST(lmk_test_null_logger_name)
+                TMK_INCLUDE_TEST(lmk_test_get_existing_logger)
+                TMK_INCLUDE_TEST(lmk_test_logger_log_levels)
+                TMK_INCLUDE_TEST(lmk_test_create_handlers)
+                TMK_INCLUDE_TEST(lmk_test_destroy_handlers)
+                TMK_INCLUDE_TEST(lmk_test_destroy_handler_with_logger_references)
+                TMK_INCLUDE_TEST(lmk_test_attach_handlers_to_multiple_loggers)
+                TMK_INCLUDE_TEST(lmk_test_attach_same_handler)
+                TMK_INCLUDE_TEST(lmk_test_destroy_logger)
+                TMK_INCLUDE_TEST(lmk_test_destroy_loggers)
+                TMK_INCLUDE_TEST(lmk_test_multiple_threads)
+                TMK_INCLUDE_TEST(lmk_test_console_log_handler)
+                TMK_INCLUDE_TEST(lmk_test_socket_log_handler)
 TMK_TEST_FUNCTION_TABLE_END
 
 void tmk_setup() {

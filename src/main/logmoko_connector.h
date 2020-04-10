@@ -75,7 +75,9 @@ typedef struct lmk_udp_socket {
 #define LMK_UDP_SOCKET_DEFAULT_SEND_BUFFER_SIZE 2048
 
 LMK_API int lmk_open_udp_socket(lmk_udp_socket *socket, lmk_inet_address *local_addr);
+
 LMK_API void lmk_close_udp_socket(lmk_udp_socket *socket);
+
 LMK_API int lmk_send_udp_packet(lmk_udp_socket *socket, lmk_udp_packet *packet);
 
 #endif

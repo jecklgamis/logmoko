@@ -51,9 +51,13 @@ typedef struct lmk_list_tag {
 
 /** List operations function prototypes */
 void lmk_init_list(lmk_list *list);
+
 int lmk_is_list_empty(lmk_list *list);
+
 void lmk_insert_list(lmk_list *list, lmk_list *entry);
+
 void lmk_remove_list(lmk_list *entry);
+
 size_t lmk_get_list_size(lmk_list *entry);
 
 #endif /* LOGMOKO_LIST_H */

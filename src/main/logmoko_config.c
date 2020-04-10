@@ -37,28 +37,16 @@ typedef struct {
 lmk_list key_value_pair_list;
 
 void lmk_init_config(const char *path) {
-    if (path != NULL) {
-    }
 }
 
 static void parse_config_file(const char *filename) {
-    for (;;) {
-    }
 }
 
 void die(const char *msg) {
-    puts(msg);
-    exit(-1);
 }
 
 static void *handle_section_entry(const char *name) {
-    if (!strcmp(name, "logger")) {
-        key_value_pair *pair = lmk_malloc(sizeof (key_value_pair));
-        if (!pair) {
-            die("Unable to allocate memory");
-        }
-    } else if (!strcmp(name, "handler")) {
-    }
+    return NULL;
 }
 
 void lmk_destroy_config() {
