@@ -1,3 +1,3 @@
 ## CONTRIBUTING
 
-Please raise an issue or feature request in Github
+Please raise an issue or feature request in Github.

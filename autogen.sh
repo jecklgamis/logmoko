@@ -1,4 +1,5 @@
 #!/bin/bash
-touch NEWS README AUTHORS ChangeLog
+touch README.md AUTHORS ChangeLog
 autoreconf --force --install
 ./configure
+
