@@ -48,7 +48,6 @@ LMK_API lmk_log_handler *lmk_get_console_log_handler() {
         lmk_init_base_log_handler(&clh->base, LMK_LOG_HANDLER_TYPE_CONSOLE, NULL, NULL,
                                   lmk_console_log_handler_log_impl, "console");
         lmk_insert_list(&g_lmk_handler_list, &clh->base.link);
-        clh->base.init(&clh->base, NULL);
         clh->base.initialized = 1;
     }
     return ((lmk_log_handler *) clh);
