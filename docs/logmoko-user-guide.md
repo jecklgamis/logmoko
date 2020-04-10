@@ -16,19 +16,16 @@ Include `logmoko.h` header file:
 ```
 #include <logmoko.h>
 ```
-Link your program with the library
+Link your program with the `logmoko` library
 ```
 gcc -o my_app.c -llogmoko
 ```
 
 ## Logmoko APIs
 
-### Initializing Logmoko
-Use `lmk_init()` to initialize `logmoko`. 
-
-#### Loggers
-A logger is the main entity used for logging requests. Use `lmk_get_logger` to create or retrieve an existing logger.
-You can create multiple loggers with different names. 
+### Loggers
+A logger is the main object used for logging requests. A logger object is passed to the logging macros (`TMK_LOG_XXX`)
+when logging. Use `lmk_get_logger` to create or retrieve an existing logger. You can create multiple loggers with different names. 
  
 API:
 ```
@@ -37,7 +34,7 @@ void lmk_set_log_level(lmk_logger *logger, int log_level);
 int lmk_get_log_level(lmk_logger *logger);
 ```
 
-`log_level` is one of Log levels:
+`log_level` is one of:
 ```
 LMK_LOG_LEVEL_TRACE
 LMK_LOG_LEVEL_DEBUG
@@ -48,8 +45,7 @@ LMK_LOG_LEVEL_FATAL
 LMK_LOG_LEVEL_OFF
 ```
 
-A logger can be assigned a log level that is used to filter out log requests. A simple hierarchy is used to filter
-out requests.
+A logger can be assigned a log level that is used to filter out log requests. Below is the hierarchy of the log levels.
 ```
 TRACE < DEBUG < INFO < WARN < ERROR < FATAL
 ```
@@ -57,7 +53,6 @@ As a general rule, if the logger has log level l, the request is logged , if u >
 log level is INFO, log requests with level INFO, WARN, ERROR, and FATAL will be logged while DEBUG and TRACE  logs 
 will be ignored.
 
-#### Making Log Requests
 To a log a message with specific log level, use the following API macros. These macros accept arguments similar to `fprintf`.
 
 API
@@ -74,12 +69,12 @@ LMK_IS_LOG_ENABLED(logger_or_handler, level)
 Example
 ```
 LMK_LOG_INFO(logger, "This is an INFO log");
-LMK_LOG_INFO(logger, Tthis is an INFO log with integer param : %d", 1024);
+LMK_LOG_INFO(logger, "This is an INFO log with integer param : %d", 1024);
 ```
 
-##### Log Handlers
+### Log Handlers
 A logger uses one or more handlers to do the actual logging to a specific interface. Logmoko supports console
-file, and socket log handler types. Log handlers are created default log level set to `LMK_LOG_LEVEL_TRACE`.
+file, and socket log handler types. Log handlers are created with default log level set to `LMK_LOG_LEVEL_TRACE`.
 
 API
 ```
@@ -94,7 +89,7 @@ void lmk_set_handler_log_level(lmk_log_handler *handler, int log_level);
 int lmk_get_handler_log_level(lmk_log_handler *handler) ;
 ```
 
-###### Console log handler example:
+#### Console log handler example:
 ```
 #include <stdlib.h>
 #include <logmoko.h>
@@ -109,7 +104,7 @@ int main(int argc, char *argv[]) {
 ```
 
 
-###### File log handler example:
+#### File log handler example:
 ```
 #include <stdlib.h>
 #include <logmoko.h>
@@ -124,7 +119,7 @@ int main(int argc, char *argv[]) {
 }
 ```
 
-###### Socket log handler example:
+#### Socket log handler example:
 ```
 #include <stdlib.h>
 #include <logmoko.h>
@@ -156,8 +151,8 @@ The log output is fixed to the following format :
 <log level> <timestamp> <filename>:<line number> <logger name> : <log message>
 ```
 
-### Destroying The Framework
-Once you're using the logger, you should call `lmk_destroy` to free up resources used by `logmoko`. 
+### Cleaning
+Once you're done using the logger, you should call `lmk_destroy` to free up resources used by `logmoko`. 
 
 API
 ```

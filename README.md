@@ -69,10 +69,10 @@ $ ./example_app
 [FATAL Fri Apr 10 14:23:08 2020 (example_app.c:24)] : This is a fatal log
 ```
 
-See the [Logmoko User Guide](docs/logmoko-user-guide.md) for the details on using `logmoko`.
+See the [Logmoko User Guide](docs/logmoko-user-guide.md) for more details.
 
 ### Contributing
-Please raise issue or pull request. CONTRIBUTING.md coming up soon!
+Please see `CONTRIBUTING.md`
 
 
 
