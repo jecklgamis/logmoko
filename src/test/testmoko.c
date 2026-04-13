@@ -52,7 +52,7 @@ TMK_API int tmk_run_tests(tmk_test_function_entry *tbl,
                     }
                     if (test->test != NULL) {
 
-                        test->test(NULL);
+                        test->test();
                     }
                     if (test->teardown != NULL) {
                         test->teardown();
