@@ -1,5 +1,7 @@
 ### Logmoko
 
+![build](https://github.com/jecklgamis/logmoko/actions/workflows/build.yaml/badge.svg)
+
 Logmoko is a minimal logging framework for C.  It allows user to control which log statements are logged based on a 
 configured log level and to which interface (e.g. console, file, remote connection).
 
