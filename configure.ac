@@ -9,7 +9,7 @@ AC_CONFIG_SRCDIR([src/main/logmoko.c])
 AM_INIT_AUTOMAKE
 
 # Configuration header
-AC_CONFIG_HEADER(src/main/logmoko_config_env.h)
+AC_CONFIG_HEADERS([src/main/logmoko_config_env.h])
 
 AC_ARG_ENABLE(debug,[  --enable-debug    Turn on debugging],
 	[case "${enableval}" in
@@ -27,8 +27,7 @@ AC_PROG_RANLIB
 AC_SEARCH_LIBS([pthread_create],[pthread],,[AC_MSG_ERROR([Unable to find pthread library])])
 
 # Checks for header files.
-AC_HEADER_STDC
-AC_CHECK_HEADERS([stdio.h stdlib.h string.h setjmp.h time.h stdarg.h pthread.h])
+AC_CHECK_HEADERS([stdio.h stdlib.h string.h inttypes.h stdint.h strings.h sys/stat.h sys/types.h unistd.h setjmp.h time.h stdarg.h pthread.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST
