@@ -45,19 +45,19 @@
 
 typedef void(*tmk_test_function)();
 
-typedef struct tmk_test_function_entry {
+struct tmk_test_function_entry {
     const char *name;
     tmk_test_function test;
     tmk_test_function setup;
     tmk_test_function teardown;
     int result;
-} tmk_test_function_entry;
+};
 
 #define TMK_TEST(name) \
     void name(void)
 
 #define TMK_TEST_FUNCTION_TABLE_START(name) \
-    tmk_test_function_entry name[]={
+    struct tmk_test_function_entry name[]={
 
 #define TMK_INCLUDE_TEST(func) \
     {#func, func, NULL, NULL, 1},
@@ -70,7 +70,7 @@ typedef struct tmk_test_function_entry {
     };
 
 #define TMK_EXTERN_TEST_FUNCTION_TABLE(name) \
-   extern tmk_test_function_entry name[];
+   extern struct tmk_test_function_entry name[];
 
 /* Warning : when defining custom assertion, make sure, you do not
  * evaluate the condition more than once  (e.g. passing it as parameter in 
@@ -140,7 +140,7 @@ void tmk_log_impl(const char *filename, const int line_no,
 #define TMK_PRINT_THIS_LINE \
     fprintf(stdout,">> %s %s %d\n", __FILE__,__func__,__LINE__);
 
-extern TMK_API int tmk_run_tests(tmk_test_function_entry *tbl,
+extern TMK_API int tmk_run_tests(struct tmk_test_function_entry *tbl,
                                  TMK_NULLABLE void (*setup)(), void (*teardown)());
 
 extern void tmk_assert_impl(int cond, const char *filename, const char *func_name, int line, const char *format, ...);

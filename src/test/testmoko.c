@@ -32,10 +32,10 @@ void tmk_assert_impl(int cond, const char *filename, const char *func_name,
     }
 }
 
-TMK_API int tmk_run_tests(tmk_test_function_entry *tbl,
+TMK_API int tmk_run_tests(struct tmk_test_function_entry *tbl,
                           TMK_NULLABLE void (*setup)(),
                           TMK_NULLABLE void (*teardown)()) {
-    tmk_test_function_entry *test;
+    struct tmk_test_function_entry *test;
     g_nr_failed_test = 0;
     TMK_LOG("Test started");
     int abort_on_first_failure = 1;

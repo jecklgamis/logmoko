@@ -24,7 +24,7 @@ gcc -o my_app.c -llogmoko
 ## Logmoko APIs
 
 ### Loggers
-A logger is the main object used for logging requests. A logger object is passed to the logging macros (`TMK_LOG_XXX`)
+A logger is the main object used for logging requests. A logger object is passed to the logging macros (`LMK_LOG_XXX`)
 when logging. Use `lmk_get_logger` to create or retrieve an existing logger. You can create multiple loggers with different names. 
  
 API:

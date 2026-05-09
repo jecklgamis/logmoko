@@ -5,10 +5,10 @@
 #include <stdio.h>
 
 /* A generic doubly linked list */
-typedef struct lmk_list_tag {
-    struct lmk_list_tag *next; /**< Link to the next entry in the list */
-    struct lmk_list_tag *prev; /**< Link to the previous entry in the list */
-} lmk_list;
+struct lmk_list {
+    struct lmk_list *next; /**< Link to the next entry in the list */
+    struct lmk_list *prev; /**< Link to the previous entry in the list */
+};
 
 /* Iterates a given list */
 #define LMK_FOR_EACH_ENTRY(list, cursor) \
@@ -17,7 +17,7 @@ typedef struct lmk_list_tag {
 /* Saves the current cursor */
 #define LMK_SAVE_CURSOR(cursor)                      \
     {                                                \
-    lmk_list *__saved_node__ = (cursor)->prev;
+    struct lmk_list *__saved_node__ = (cursor)->prev;
 
 /* Restores the current cursor */
 #define LMK_RESTORE_CURSOR(cursor) \
@@ -25,15 +25,15 @@ typedef struct lmk_list_tag {
     }
 
 /** List operations function prototypes */
-void lmk_init_list(lmk_list *list);
+void lmk_init_list(struct lmk_list *list);
 
-int lmk_is_list_empty(lmk_list *list);
+int lmk_is_list_empty(struct lmk_list *list);
 
-void lmk_insert_list(lmk_list *list, lmk_list *entry);
+void lmk_insert_list(struct lmk_list *list, struct lmk_list *entry);
 
-void lmk_remove_list(lmk_list *entry);
+void lmk_remove_list(struct lmk_list *entry);
 
-size_t lmk_get_list_size(lmk_list *entry);
+size_t lmk_get_list_size(struct lmk_list *entry);
 
 #endif /* LOGMOKO_LIST_H */
 

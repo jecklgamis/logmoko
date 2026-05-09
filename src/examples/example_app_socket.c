@@ -1,28 +1,22 @@
-#include <stdlib.h>
-#include <logmoko.h>
+#include "logmoko.h"
 
-int main(int argc, char *argv[]) {
-    lmk_logger *logger;
-    lmk_log_handler *handler;
+int main() {
+    lmk_init();
 
-    /* Create a logger */
-    logger = lmk_get_logger("logger");
+    struct lmk_logger *logger;
+    struct lmk_log_handler *handler;
 
-    /* Create a socket log handler */
-    handler = lmk_get_socket_log_handler("socket");
+    logger = lmk_get_logger("socket-logger");
+    lmk_set_log_level(logger, LMK_LOG_LEVEL_INFO);
+    handler = lmk_get_socket_log_handler("socket-handler");
 
-    /* Attach a remote log listener */
     lmk_attach_log_listener(handler, "127.0.0.1", 9000);
 
-    /* Attach log handler to logger */
     lmk_attach_log_handler(logger, handler);
 
-    /* Start logging! */
-    for (int a = 0; a < 16; a++) {
-        LMK_LOG_INFO(logger, "%d This is an info log", a);
+    for(int a=0;a < 10*1000;a++) {
+        LMK_LOG_INFO(logger, "This is a socket log message %d", a);
     }
-
-    /* Clean up */
     lmk_destroy();
-    return EXIT_SUCCESS;
+    return 0;
 }

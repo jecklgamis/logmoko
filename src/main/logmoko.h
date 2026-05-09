@@ -46,24 +46,24 @@ enum {
 #define LMK_LOG_BUFFER_SIZE   2048
 
 /* Log record */
-typedef struct lmk_log_record {
-    lmk_list link;
+struct lmk_log_record {
+    struct lmk_list link;
     int log_level;
     char *data;
     int line_no;
     char *file_name;
-} lmk_log_record;
+};
 
 /* Log formatter (not used at the moment) */
-typedef struct lmk_log_formatter {
+struct lmk_log_formatter {
     const char *name;
-} lmk_log_formatter;
+};
 
 /* Log handler */
-typedef struct lmk_log_handler {
-    lmk_list link;
+struct lmk_log_handler {
+    struct lmk_list link;
     int log_level;
-    lmk_log_formatter *formatter;
+    struct lmk_log_formatter *formatter;
 
     void (*init)(struct lmk_log_handler *, void *);
 
@@ -77,17 +77,17 @@ typedef struct lmk_log_handler {
     unsigned int nr_logger_ref;
     int initialized;
     lmk_mutex lock;
-} lmk_log_handler;
+};
 
 /* The format of the log handler implementation functions */
 typedef void (*lmk_log_handler_function)(struct lmk_log_handler *, void *);
 
 /* The file log handler */
-typedef struct lmk_file_log_handler {
-    lmk_log_handler base;
+struct lmk_file_log_handler {
+    struct lmk_log_handler base;
     const char *filename;
     FILE *log_fp;
-} lmk_file_log_handler;
+};
 
 /* File log handler properties */
 enum {
@@ -97,55 +97,55 @@ enum {
 };
 
 /* The console log handler */
-typedef struct lmk_console_log_handler {
-    lmk_log_handler base;
-} lmk_console_log_handler;
+struct lmk_console_log_handler {
+    struct lmk_log_handler base;
+};
 
 /* The socket log handler */
-typedef struct lmk_socket_log_handler {
-    lmk_log_handler base;
-    lmk_list log_server_list;
-    lmk_udp_socket socket_object;
-} lmk_socket_log_handler;
+struct lmk_socket_log_handler {
+    struct lmk_log_handler base;
+    struct lmk_list log_server_list;
+    struct lmk_udp_socket socket_object;
+};
 
 /* The serial log handler */
-typedef struct lmk_serial_log_handler {
-    lmk_log_handler base;
-} lmk_serial_log_handler;
+struct lmk_serial_log_handler {
+    struct lmk_log_handler base;
+};
 
 /* Maximum logger name length */
 #define LMK_LOG_MAX_LOGGER_NAME_SZ 64
 
 /* Logger */
-typedef struct lmk_logger {
-    lmk_list link;
+struct lmk_logger {
+    struct lmk_list link;
     char *name;
     int log_level;
-    lmk_list handler_ref_list;
+    struct lmk_list handler_ref_list;
     int initialized;
     char log_buff[LMK_LOG_BUFFER_SIZE];
     lmk_mutex log_lock;
-} lmk_logger;
+};
 
 /* Logger reference */
-typedef struct lmk_log_handler_ref {
-    lmk_list link;
-    lmk_log_handler *handler; /**< Points to the log handler */
-} lmk_log_handler_ref;
+struct lmk_log_handler_ref {
+    struct lmk_list link;
+    struct lmk_log_handler *handler; /**< Points to the log handler */
+};
 
 /* Logging macros  */
 
-LMK_API void lmk_log_trace(lmk_logger *logger, const char *file_name, const int line_no, const char *format, ...);
+LMK_API void lmk_log_trace(struct lmk_logger *logger, const char *file_name, const int line_no, const char *format, ...);
 
-LMK_API void lmk_log_debug(lmk_logger *logger, const char *file_name, const int line_no, const char *format, ...);
+LMK_API void lmk_log_debug(struct lmk_logger *logger, const char *file_name, const int line_no, const char *format, ...);
 
-LMK_API void lmk_log_info(lmk_logger *logger, const char *file_name, const int line_no, const char *format, ...);
+LMK_API void lmk_log_info(struct lmk_logger *logger, const char *file_name, const int line_no, const char *format, ...);
 
-LMK_API void lmk_log_error(lmk_logger *logger, const char *file_name, const int line_no, const char *format, ...);
+LMK_API void lmk_log_error(struct lmk_logger *logger, const char *file_name, const int line_no, const char *format, ...);
 
-LMK_API void lmk_log_warn(lmk_logger *logger, const char *file_name, const int line_no, const char *format, ...);
+LMK_API void lmk_log_warn(struct lmk_logger *logger, const char *file_name, const int line_no, const char *format, ...);
 
-LMK_API void lmk_log_fatal(lmk_logger *logger, const char *file_name, const int line_no, const char *format, ...);
+LMK_API void lmk_log_fatal(struct lmk_logger *logger, const char *file_name, const int line_no, const char *format, ...);
 
 /* Logs a trace message */
 #define LMK_LOG_TRACE(logger, format...) \
@@ -183,51 +183,50 @@ extern LMK_API void lmk_destroy();
 
 extern void lmk_dump_loggers();
 
-extern LMK_API lmk_logger *lmk_get_logger(const char *name);
+extern LMK_API struct lmk_logger *lmk_get_logger(const char *name);
 
-extern LMK_API void lmk_set_log_level(lmk_logger *logger, int log_level);
+extern LMK_API void lmk_set_log_level(struct lmk_logger *logger, int log_level);
 
-extern LMK_API int lmk_get_log_level(lmk_logger *logger);
+extern LMK_API int lmk_get_log_level(struct lmk_logger *logger);
 
-extern LMK_API int lmk_destroy_logger(lmk_logger **logger_addr);
+extern LMK_API int lmk_destroy_logger(struct lmk_logger **logger_addr);
 
-extern LMK_API lmk_log_handler *lmk_get_console_log_handler();
+extern LMK_API struct lmk_log_handler *lmk_get_console_log_handler();
 
-extern LMK_API lmk_log_handler *lmk_get_file_log_handler(const char *name, const char *filename);
+extern LMK_API struct lmk_log_handler *lmk_get_file_log_handler(const char *name, const char *filename);
 
-extern LMK_API lmk_log_handler *lmk_get_socket_log_handler(const char *name);
+extern LMK_API struct lmk_log_handler *lmk_get_socket_log_handler(const char *name);
 
-extern LMK_API void lmk_set_log_filename(lmk_log_handler *handler, const char *filename);
+extern LMK_API void lmk_set_log_filename(struct lmk_log_handler *handler, const char *filename);
 
-extern LMK_API int lmk_attach_log_handler(lmk_logger *logger, lmk_log_handler *handler);
+extern LMK_API int lmk_attach_log_handler(struct lmk_logger *logger, struct lmk_log_handler *handler);
 
-extern LMK_API int lmk_detach_log_handler(lmk_logger *logger, lmk_log_handler *handler);
+extern LMK_API int lmk_detach_log_handler(struct lmk_logger *logger, struct lmk_log_handler *handler);
 
-extern LMK_API void lmk_set_handler_log_level(lmk_log_handler *handler, int log_level);
+extern LMK_API void lmk_set_handler_log_level(struct lmk_log_handler *handler, int log_level);
 
-extern LMK_API int lmk_get_handler_log_level(lmk_log_handler *handler);
+extern LMK_API int lmk_get_handler_log_level(struct lmk_log_handler *handler);
 
-extern LMK_API int lmk_destroy_log_handler(lmk_log_handler **handler_addr);
+extern LMK_API int lmk_destroy_log_handler(struct lmk_log_handler **handler_addr);
 
 extern LMK_API int lmk_get_nr_loggers();
 
 extern LMK_API int lmk_get_nr_handlers();
 
-extern lmk_log_handler *lmk_find_handler(lmk_logger *logger, const char *handler_name);
+extern struct lmk_log_handler *lmk_find_handler(struct lmk_logger *logger, const char *handler_name);
 
-extern lmk_logger *lmk_search_logger_by_name(const char *name);
+extern struct lmk_logger *lmk_search_logger_by_name(const char *name);
 
-extern lmk_log_handler *lmk_search_log_handler_by_name(const char *name);
+extern struct lmk_log_handler *lmk_search_log_handler_by_name(const char *name);
 
 extern const char *lmk_get_log_handler_type_str(int type);
 
 extern const char *lmk_get_log_level_str(int log_level);
 
-extern lmk_list *lmk_get_loggers();
+extern struct lmk_list *lmk_get_loggers();
 
-extern lmk_list *lmk_get_handlers();
+extern struct lmk_list *lmk_get_handlers();
 
-extern void lmk_attach_log_listener(lmk_log_handler *handler, const char *ip, int port);
+extern void lmk_attach_log_listener(struct lmk_log_handler *handler, const char *ip, int port);
 
 #endif /* LOGMOKO_H */
-

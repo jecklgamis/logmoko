@@ -8,9 +8,9 @@
  */
 TMK_TEST(lmk_test_create_and_destroy_logger) {
 
-    lmk_logger *logger = lmk_get_logger("logger");
+    struct lmk_logger *logger = lmk_get_logger("logger");
     TMK_ASSERT_NOT_NULL(logger);
-    TMK_ASSERT_EQUAL(LMK_LOG_LEVEL_TRACE, lmk_get_log_level(logger));
+    TMK_ASSERT_EQUAL(LMK_LOG_LEVEL_INFO, lmk_get_log_level(logger));
     TMK_ASSERT_EQUAL(1, lmk_get_nr_loggers());
     TMK_ASSERT_EQUAL(0, lmk_get_nr_handlers());
 
@@ -29,17 +29,17 @@ TMK_TEST(lmk_test_null_logger) {
 
 /* Verify that a null logger name is not allowed */
 TMK_TEST(lmk_test_null_logger_name) {
-    lmk_logger *logger = lmk_get_logger(NULL);
+    struct lmk_logger *logger = lmk_get_logger(NULL);
     TMK_ASSERT_NULL(logger);
     lmk_destroy();
 }
 
 /* Verify that the same logger is returned if names are similar */
 TMK_TEST(lmk_test_get_existing_logger) {
-    lmk_logger *logger = lmk_get_logger("logger");
+    struct lmk_logger *logger = lmk_get_logger("logger");
     TMK_ASSERT_NOT_NULL(logger);
 
-    lmk_logger *logger2 = lmk_get_logger("logger");
+    struct lmk_logger *logger2 = lmk_get_logger("logger");
     TMK_ASSERT_NOT_NULL(logger2);
     TMK_ASSERT_EQUAL_PTRS(logger, logger2);
     lmk_destroy();
@@ -47,11 +47,11 @@ TMK_TEST(lmk_test_get_existing_logger) {
 
 /* Verify that log requests are delegated to attached loggers */
 TMK_TEST(lmk_test_logger_log_levels) {
-    lmk_logger *logger = lmk_get_logger("logger");
+    struct lmk_logger *logger = lmk_get_logger("logger");
     TMK_ASSERT_NOT_NULL(logger);
     lmk_set_log_level(logger, LMK_LOG_LEVEL_TRACE);
 
-    lmk_log_handler *clh = lmk_get_console_log_handler();
+    struct lmk_log_handler *clh = lmk_get_console_log_handler();
     TMK_ASSERT_NOT_NULL(clh);
     lmk_set_handler_log_level(clh, LMK_LOG_LEVEL_TRACE);
 
@@ -174,11 +174,11 @@ TMK_TEST(lmk_test_logger_log_levels) {
  * Verify that we can successfully create different log handler types
  */
 TMK_TEST(lmk_test_create_handlers) {
-    lmk_log_handler *clh = lmk_get_console_log_handler();
+    struct lmk_log_handler *clh = lmk_get_console_log_handler();
     TMK_ASSERT_NOT_NULL(clh);
     TMK_ASSERT_EQUAL(LMK_LOG_HANDLER_TYPE_CONSOLE, clh->type);
     TMK_ASSERT_TRUE(clh->initialized);
-    lmk_log_handler *flh = lmk_get_file_log_handler("flh", "flh.log");
+    struct lmk_log_handler *flh = lmk_get_file_log_handler("flh", "flh.log");
     TMK_ASSERT_NOT_NULL(flh);
     TMK_ASSERT_EQUAL(LMK_LOG_HANDLER_TYPE_FILE, flh->type);
     TMK_ASSERT_TRUE(flh->initialized);
@@ -189,8 +189,8 @@ TMK_TEST(lmk_test_create_handlers) {
  * Verify we can only create one and only one console log handler.
  */
 TMK_TEST(lmk_test_console_log_handler) {
-    lmk_log_handler *clh1 = lmk_get_console_log_handler();
-    lmk_log_handler *clh2 = lmk_get_console_log_handler();
+    struct lmk_log_handler *clh1 = lmk_get_console_log_handler();
+    struct lmk_log_handler *clh2 = lmk_get_console_log_handler();
     TMK_ASSERT_EQUAL_PTRS(clh1, clh2);
     lmk_destroy();
 }
@@ -199,9 +199,9 @@ TMK_TEST(lmk_test_console_log_handler) {
  * Verify that we can successfully destroy handlers
  */
 TMK_TEST(lmk_test_destroy_handlers) {
-    lmk_log_handler *clh = lmk_get_console_log_handler();
+    struct lmk_log_handler *clh = lmk_get_console_log_handler();
     TMK_ASSERT_NOT_NULL(clh);
-    lmk_log_handler *flh = lmk_get_file_log_handler("flh", "flh.log");
+    struct lmk_log_handler *flh = lmk_get_file_log_handler("flh", "flh.log");
     TMK_ASSERT_NOT_NULL(flh);
     lmk_destroy_log_handler(&clh);
     TMK_ASSERT_NULL(clh);
@@ -216,10 +216,10 @@ TMK_TEST(lmk_test_destroy_handlers) {
  * loggers referencing it.
  */
 TMK_TEST(lmk_test_destroy_handler_with_logger_references) {
-    lmk_logger *logger = lmk_get_logger("logger");
+    struct lmk_logger *logger = lmk_get_logger("logger");
     TMK_ASSERT_NOT_NULL(logger);
 
-    lmk_log_handler *clh = lmk_get_console_log_handler();
+    struct lmk_log_handler *clh = lmk_get_console_log_handler();
     TMK_ASSERT_NOT_NULL(clh);
 
     lmk_dump_loggers();
@@ -239,16 +239,16 @@ TMK_TEST(lmk_test_destroy_handler_with_logger_references) {
  * Verify log handler attachment to multiple loggers.
  */
 TMK_TEST(lmk_test_attach_handlers_to_multiple_loggers) {
-    lmk_logger *logger1 = lmk_get_logger("logger1");
+    struct lmk_logger *logger1 = lmk_get_logger("logger1");
     TMK_ASSERT_NOT_NULL(logger1);
 
-    lmk_logger *logger2 = lmk_get_logger("logger2");
+    struct lmk_logger *logger2 = lmk_get_logger("logger2");
     TMK_ASSERT_NOT_NULL(logger2);
 
-    lmk_log_handler *clh = lmk_get_console_log_handler();
+    struct lmk_log_handler *clh = lmk_get_console_log_handler();
     TMK_ASSERT_NOT_NULL(clh);
 
-    lmk_log_handler *flh = lmk_get_file_log_handler("flh", "flh.log");
+    struct lmk_log_handler *flh = lmk_get_file_log_handler("flh", "flh.log");
     TMK_ASSERT_NOT_NULL(flh);
 
     TMK_ASSERT_EQUAL(LMK_E_OK, lmk_attach_log_handler(logger1, clh));
@@ -275,13 +275,13 @@ TMK_TEST(lmk_test_attach_handlers_to_multiple_loggers) {
  */
 TMK_TEST(lmk_test_attach_same_handler) {
 
-    lmk_logger *logger = lmk_get_logger("logger");
+    struct lmk_logger *logger = lmk_get_logger("logger");
     TMK_ASSERT_NOT_NULL(logger);
 
-    lmk_log_handler *clh1 = lmk_get_console_log_handler();
+    struct lmk_log_handler *clh1 = lmk_get_console_log_handler();
     TMK_ASSERT_NOT_NULL(clh1);
 
-    lmk_log_handler *clh2 = lmk_get_console_log_handler();
+    struct lmk_log_handler *clh2 = lmk_get_console_log_handler();
     TMK_ASSERT_NOT_NULL(clh2);
 
     lmk_attach_log_handler(logger, clh1);
@@ -298,13 +298,13 @@ TMK_TEST(lmk_test_attach_same_handler) {
  *  any log handlers and will be detached from the list of all loggers.
  */
 TMK_TEST(lmk_test_destroy_logger) {
-    lmk_logger *logger = lmk_get_logger("logger");
+    struct lmk_logger *logger = lmk_get_logger("logger");
     TMK_ASSERT_NOT_NULL(logger);
 
-    lmk_log_handler *clh1 = lmk_get_console_log_handler();
+    struct lmk_log_handler *clh1 = lmk_get_console_log_handler();
     TMK_ASSERT_NOT_NULL(clh1);
 
-    lmk_log_handler *clh2 = lmk_get_console_log_handler();
+    struct lmk_log_handler *clh2 = lmk_get_console_log_handler();
     TMK_ASSERT_NOT_NULL(clh2);
 
     TMK_ASSERT(lmk_attach_log_handler(logger, clh1) == LMK_E_OK);
@@ -331,19 +331,19 @@ TMK_TEST(lmk_test_destroy_logger) {
  *
  */
 TMK_TEST(lmk_test_destroy_loggers) {
-    lmk_logger *logger1 = lmk_get_logger("logger1");
+    struct lmk_logger *logger1 = lmk_get_logger("logger1");
     TMK_ASSERT_NOT_NULL(logger1);
 
-    lmk_logger *logger2 = lmk_get_logger("logger2");
+    struct lmk_logger *logger2 = lmk_get_logger("logger2");
     TMK_ASSERT_NOT_NULL(logger2);
 
-    lmk_logger *logger3 = lmk_get_logger("logger3");
+    struct lmk_logger *logger3 = lmk_get_logger("logger3");
     TMK_ASSERT_NOT_NULL(logger3);
 
-    lmk_log_handler *clh = lmk_get_console_log_handler();
+    struct lmk_log_handler *clh = lmk_get_console_log_handler();
     TMK_ASSERT_NOT_NULL(clh);
 
-    lmk_log_handler *flh = lmk_get_file_log_handler("flh", "flh.log");
+    struct lmk_log_handler *flh = lmk_get_file_log_handler("flh", "flh.log");
     TMK_ASSERT_NOT_NULL(flh);
 
     TMK_ASSERT(lmk_attach_log_handler(logger1, clh) == LMK_E_OK);
@@ -368,7 +368,7 @@ TMK_TEST(lmk_test_destroy_loggers) {
 }
 
 void *log_user_thread_routine1(void *arg) {
-    lmk_logger *logger = NULL;
+    struct lmk_logger *logger = NULL;
     int id = 0;
     static int nr_log_calls = 0;
     id = *((int *) arg);
@@ -381,7 +381,7 @@ void *log_user_thread_routine1(void *arg) {
 }
 
 void *log_user_thread_routine2(void *arg) {
-    lmk_logger *logger = NULL;
+    struct lmk_logger *logger = NULL;
     int id = 0;
     static int nr_log_calls = 0;
     id = *((int *) arg);
@@ -394,7 +394,7 @@ void *log_user_thread_routine2(void *arg) {
 }
 
 void *log_user_thread_routine3(void *arg) {
-    lmk_logger *logger = NULL;
+    struct lmk_logger *logger = NULL;
     int id = 0;
     static int nr_log_calls = 0;
     id = *((int *) arg);
@@ -407,7 +407,7 @@ void *log_user_thread_routine3(void *arg) {
 }
 
 void *log_user_thread_routine4(void *arg) {
-    lmk_logger *logger = NULL;
+    struct lmk_logger *logger = NULL;
     int id = 0;
     static int nr_log_calls = 0;
     id = *((int *) arg);
@@ -435,17 +435,22 @@ TMK_TEST(lmk_test_multiple_threads) {
     pthread_t t3;
     pthread_t t4;
 
-    lmk_logger *logger1 = lmk_get_logger("logger1");
+    struct lmk_logger *logger1 = lmk_get_logger("logger1");
     TMK_ASSERT_NOT_NULL(logger1);
 
-    lmk_logger *logger2 = lmk_get_logger("logger2");
+    struct lmk_logger *logger2 = lmk_get_logger("logger2");
     TMK_ASSERT_NOT_NULL(logger2);
 
-    lmk_log_handler *flh = lmk_get_file_log_handler("flh", "flh.log");
+    struct lmk_log_handler *flh = lmk_get_file_log_handler("flh", "flh.log");
     TMK_ASSERT_NOT_NULL(flh);
+    lmk_set_handler_log_level(flh, LMK_LOG_LEVEL_TRACE);
 
-    lmk_log_handler *clh = lmk_get_console_log_handler();
+    struct lmk_log_handler *clh = lmk_get_console_log_handler();
     TMK_ASSERT_NOT_NULL(clh);
+    lmk_set_handler_log_level(clh, LMK_LOG_LEVEL_TRACE);
+
+    lmk_set_log_level(logger1, LMK_LOG_LEVEL_TRACE);
+    lmk_set_log_level(logger2, LMK_LOG_LEVEL_TRACE);
 
     lmk_attach_log_handler(logger1, flh);
     lmk_attach_log_handler(logger2, flh);
@@ -471,11 +476,13 @@ TMK_TEST(lmk_test_multiple_threads) {
 }
 
 TMK_TEST(lmk_test_socket_log_handler) {
-    lmk_logger *logger = lmk_get_logger("logger");
+    struct lmk_logger *logger = lmk_get_logger("logger");
     TMK_ASSERT_NOT_NULL(logger);
 
-    lmk_log_handler *slh = lmk_get_socket_log_handler("slh");
+    struct lmk_log_handler *slh = lmk_get_socket_log_handler("slh");
     TMK_ASSERT_NOT_NULL(slh);
+    lmk_set_handler_log_level(slh, LMK_LOG_LEVEL_TRACE);
+    lmk_set_log_level(logger, LMK_LOG_LEVEL_TRACE);
 
     lmk_attach_log_listener(slh, "127.0.0.1", 6000);
 

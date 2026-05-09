@@ -2,13 +2,13 @@
 
 FILE *config_file;
 
-typedef struct {
-    lmk_list link;
+struct key_value_pair {
+    struct lmk_list link;
     const char *key;
     const char *value;
-} key_value_pair;
+};
 
-lmk_list key_value_pair_list;
+struct lmk_list key_value_pair_list;
 
 void lmk_init_config(const char *path) {
 }
@@ -25,5 +25,3 @@ static void *handle_section_entry(const char *name) {
 
 void lmk_destroy_config() {
 }
-
-

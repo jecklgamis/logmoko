@@ -51,25 +51,25 @@ typedef enum tmk_exception_id {
 } tmk_exception_id;
 
 /* Exception runtime data structure */
-typedef struct tmk_exception {
+struct tmk_exception {
     tmk_exception_id id; /**< Exception id */
     const char *name; /**< Exception name */
-} tmk_exception;
+};
 
 /* Exception frame runtime data structure */
-typedef struct tmk_exception_frame {
-    tmk_exception *excp; /**< Exception */
+struct tmk_exception_frame {
+    struct tmk_exception *excp; /**< Exception */
     sigjmp_buf *env; /**< native exception context */
     struct tmk_exception_frame *outer; /**< outer exception frame */
     struct sigaction segv_act_old; /**< SIGSEGV action to be restored */
     struct sigaction ill_act_old; /**< SIGILL action to be restored */
     struct sigaction fpe_act_old; /**< SIGFPE action to be restored */
     struct sigaction bus_act_old; /**< SIGBUGS action to be restored */
-} tmk_exception_frame;
+};
 
-typedef struct tmk_exception_context {
-    tmk_exception_frame *excp_root;
-} tmk_exception_context;
+struct tmk_exception_context {
+    struct tmk_exception_frame *excp_root;
+};
 
 #define TMK_EXCEPTION_TYPE_GET() (__ret_code)
 #define TMK_EXCEPTION_TYPE_NONE  (0)
@@ -81,7 +81,7 @@ typedef struct tmk_exception_context {
     {                                         \
         int __retcode = -1;                    \
         sigjmp_buf __env;                     \
-        tmk_exception_frame  __frame;          \
+        struct tmk_exception_frame  __frame;          \
         __frame.outer = g_tmk_curr_excp_frame;    \
         __frame.excp = NULL;              \
 		g_tmk_curr_excp_frame = &__frame;         \
@@ -97,7 +97,7 @@ typedef struct tmk_exception_context {
         g_tmk_curr_excp_frame = __frame.outer;    \
         tmk_sig_restore(&__frame); \
         if (__retcode != TMK_EXCEPTION_TYPE_NONE ) {            \
-            tmk_exception *__caught_excp = __frame.excp;       \
+            struct tmk_exception *__caught_excp = __frame.excp;       \
             int __ret_code = __retcode;                     \
 
 /* Terminates TMK_CATCH */
@@ -119,16 +119,15 @@ typedef struct tmk_exception_context {
 /* Exception mechanism function prototypes */
 void tmk_init_exception();
 void tmk_destroy_exception();
-tmk_exception *tmk_lookup_excp_by_id(tmk_exception_id id);
+struct tmk_exception *tmk_lookup_excp_by_id(tmk_exception_id id);
 
 /** External variable declarations */
-extern tmk_exception_frame *g_tmk_curr_excp_frame;
+extern struct tmk_exception_frame *g_tmk_curr_excp_frame;
 
 /** Exception signal handlers */
 extern void tmk_sig_handler(int signo);
 extern void tmk_sig_catch(void);
-extern void tmk_sig_restore(tmk_exception_frame *pf);
-extern void tmk_sig_save(tmk_exception_frame *pf);
+extern void tmk_sig_restore(struct tmk_exception_frame *pf);
+extern void tmk_sig_save(struct tmk_exception_frame *pf);
 
 #endif
-

@@ -1,27 +1,27 @@
 #include "logmoko.h"
 
-extern void lmk_socket_log_handler_init(lmk_log_handler *handler, void *param);
+extern void lmk_socket_log_handler_init(struct lmk_log_handler *handler, void *param);
 
-extern void lmk_socket_log_handler_destroy(lmk_log_handler *handler, void *param);
+extern void lmk_socket_log_handler_destroy(struct lmk_log_handler *handler, void *param);
 
-extern void lmk_socket_log_handler_log_impl(lmk_log_handler *handler, void *param);
+extern void lmk_socket_log_handler_log_impl(struct lmk_log_handler *handler, void *param);
 
-extern void lmk_file_log_handler_init(lmk_log_handler *handler, void *param);
+extern void lmk_file_log_handler_init(struct lmk_log_handler *handler, void *param);
 
-extern void lmk_file_log_handler_destroy(lmk_log_handler *handler, void *param);
+extern void lmk_file_log_handler_destroy(struct lmk_log_handler *handler, void *param);
 
-extern void lmk_file_log_handler_log_impl(lmk_log_handler *handler, void *param);
+extern void lmk_file_log_handler_log_impl(struct lmk_log_handler *handler, void *param);
 
-extern void lmk_console_log_handler_log_impl(lmk_log_handler *handler, void *param);
+extern void lmk_console_log_handler_log_impl(struct lmk_log_handler *handler, void *param);
 
-extern lmk_list g_lmk_handler_list;
+extern struct lmk_list g_lmk_handler_list;
 
-void lmk_init_base_log_handler(lmk_log_handler *handler, int type,
+void lmk_init_base_log_handler(struct lmk_log_handler *handler, int type,
                                lmk_log_handler_function init,
                                lmk_log_handler_function destroy,
                                lmk_log_handler_function log_impl, const char *name) {
     if (handler != NULL) {
-        memset(handler, 0, sizeof(lmk_log_handler));
+        memset(handler, 0, sizeof(struct lmk_log_handler));
         lmk_init_list(&handler->link);
         int name_len = strlen(name);
         if ((handler->name = lmk_malloc(name_len)) != NULL) {
@@ -32,37 +32,37 @@ void lmk_init_base_log_handler(lmk_log_handler *handler, int type,
         handler->destroy = destroy;
         handler->log_impl = log_impl;
         handler->type = type;
-        handler->log_level = LMK_LOG_LEVEL_TRACE;
+        handler->log_level = LMK_LOG_LEVEL_INFO;
     }
 }
 
 /* Retrieves the console log handler */
-LMK_API lmk_log_handler *lmk_get_console_log_handler() {
-    lmk_console_log_handler *clh = NULL;
-    lmk_log_handler *handler = NULL;
+LMK_API struct lmk_log_handler *lmk_get_console_log_handler() {
+    struct lmk_console_log_handler *clh = NULL;
+    struct lmk_log_handler *handler = NULL;
     lmk_init();
     if ((handler = lmk_search_log_handler_by_name("console")) != NULL) {
         return handler;
     }
-    if ((clh = (lmk_console_log_handler *) lmk_malloc(sizeof(lmk_console_log_handler))) != NULL) {
+    if ((clh = (struct lmk_console_log_handler *) lmk_malloc(sizeof(struct lmk_console_log_handler))) != NULL) {
         lmk_init_base_log_handler(&clh->base, LMK_LOG_HANDLER_TYPE_CONSOLE, NULL, NULL,
                                   lmk_console_log_handler_log_impl, "console");
         lmk_insert_list(&g_lmk_handler_list, &clh->base.link);
         clh->base.initialized = 1;
     }
-    return ((lmk_log_handler *) clh);
+    return ((struct lmk_log_handler *) clh);
 }
 
-LMK_API lmk_log_handler *lmk_get_file_log_handler(const char *name, const char *filename) {
-    lmk_file_log_handler *flh = NULL;
-    lmk_log_handler *handler = NULL;
+LMK_API struct lmk_log_handler *lmk_get_file_log_handler(const char *name, const char *filename) {
+    struct lmk_file_log_handler *flh = NULL;
+    struct lmk_log_handler *handler = NULL;
     lmk_init();
-    if (name != NULL) {
+    if (name) {
         if ((handler = lmk_search_log_handler_by_name(name)) != NULL) {
             return handler;
         }
-        if ((flh = (lmk_file_log_handler *) lmk_malloc(
-                sizeof(lmk_file_log_handler))) != NULL) {
+        if ((flh = (struct lmk_file_log_handler *) lmk_malloc(
+                sizeof(struct lmk_file_log_handler))) != NULL) {
             lmk_init_base_log_handler(&flh->base, LMK_LOG_HANDLER_TYPE_FILE,
                                       lmk_file_log_handler_init, lmk_file_log_handler_destroy,
                                       lmk_file_log_handler_log_impl, name);
@@ -73,19 +73,19 @@ LMK_API lmk_log_handler *lmk_get_file_log_handler(const char *name, const char *
             flh->base.initialized = 1;
         }
     }
-    return ((lmk_log_handler *) flh);
+    return ((struct lmk_log_handler *) flh);
 }
 
-LMK_API lmk_log_handler *lmk_get_socket_log_handler(const char *name) {
-    lmk_socket_log_handler *slh = NULL;
-    lmk_log_handler *handler;
+LMK_API struct lmk_log_handler *lmk_get_socket_log_handler(const char *name) {
+    struct lmk_socket_log_handler *slh = NULL;
+    struct lmk_log_handler *handler;
     lmk_init();
     if (name != NULL) {
         if ((handler = lmk_search_log_handler_by_name(name)) != NULL) {
             return handler;
         }
-        if ((slh = (lmk_socket_log_handler *) lmk_malloc(
-                sizeof(lmk_socket_log_handler))) != NULL) {
+        if ((slh = (struct lmk_socket_log_handler *) lmk_malloc(
+                sizeof(struct lmk_socket_log_handler))) != NULL) {
             lmk_init_base_log_handler(&slh->base, LMK_LOG_HANDLER_TYPE_SOCKET,
                                       lmk_socket_log_handler_init, lmk_socket_log_handler_destroy,
                                       lmk_socket_log_handler_log_impl, name);
@@ -94,11 +94,11 @@ LMK_API lmk_log_handler *lmk_get_socket_log_handler(const char *name) {
             slh->base.initialized = 1;
         }
     }
-    return ((lmk_log_handler *) slh);
+    return ((struct lmk_log_handler *) slh);
 }
 
-int lmk_destroy_log_handler(lmk_log_handler **handler_addr) {
-    lmk_log_handler *handler = NULL;
+int lmk_destroy_log_handler(struct lmk_log_handler **handler_addr) {
+    struct lmk_log_handler *handler = NULL;
 
     if (handler_addr == NULL || *handler_addr == NULL) {
         return LMK_E_NG;
@@ -125,7 +125,7 @@ int lmk_destroy_log_handler(lmk_log_handler **handler_addr) {
     return LMK_E_OK;
 }
 
-LMK_API void lmk_set_handler_log_level(lmk_log_handler *handler, int log_level) {
+LMK_API void lmk_set_handler_log_level(struct lmk_log_handler *handler, int log_level) {
     lmk_init();
     if (handler != NULL && (log_level >= LMK_LOG_LEVEL_TRACE && log_level
                                                                 <= LMK_LOG_LEVEL_OFF)) {
@@ -133,7 +133,7 @@ LMK_API void lmk_set_handler_log_level(lmk_log_handler *handler, int log_level) 
     }
 }
 
-LMK_API int lmk_get_handler_log_level(lmk_log_handler *handler) {
+LMK_API int lmk_get_handler_log_level(struct lmk_log_handler *handler) {
     lmk_init();
     if (handler != NULL && handler->initialized) {
         return handler->log_level;

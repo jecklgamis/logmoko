@@ -27,7 +27,7 @@
 #include <testmoko_exception.h>
 
 /* Current exception stack frame */
-tmk_exception_frame *g_tmk_curr_excp_frame = NULL;
+struct tmk_exception_frame *g_tmk_curr_excp_frame = NULL;
 int g_tmk_excp_initialized = 0;
 
 /* Defines an exception object table entry */
@@ -35,7 +35,7 @@ int g_tmk_excp_initialized = 0;
     { id, name },
 
 /* Global exception object table */
-tmk_exception
+struct tmk_exception
 g_tmk_excp_tbl[] = {
     TMK_DEFINE_EXCEPTION(TMK_EXCP_ID_START, "Reserved (TMK_EXCP_ID_START)")
     TMK_DEFINE_EXCEPTION(TMK_EXCP_ABORTTESTRUN, "test function aborted")
@@ -52,8 +52,8 @@ g_tmk_excp_tbl[] = {
 };
 
 /*  Retrieves the exception object of the given exception id */
-tmk_exception *tmk_lookup_excp_by_id(tmk_exception_id id) {
-    tmk_exception *excp = &g_tmk_excp_tbl[TMK_EXCP_ID_UNKNOWN];
+struct tmk_exception *tmk_lookup_excp_by_id(tmk_exception_id id) {
+    struct tmk_exception *excp = &g_tmk_excp_tbl[TMK_EXCP_ID_UNKNOWN];
     if (id > TMK_EXCP_ID_START && id < TMK_EXCP_ID_END) {
         excp = &g_tmk_excp_tbl[id];
     }
@@ -100,7 +100,7 @@ void tmk_sig_handler(int signo) {
 }
 
 /* Saves signal context */
-void tmk_sig_save(tmk_exception_frame *frame) {
+void tmk_sig_save(struct tmk_exception_frame *frame) {
     sigaction(SIGSEGV, NULL, &frame->segv_act_old);
     sigaction(SIGILL, NULL, &frame->ill_act_old);
     sigaction(SIGFPE, NULL, &frame->fpe_act_old);
@@ -108,7 +108,7 @@ void tmk_sig_save(tmk_exception_frame *frame) {
 }
 
 /* Restores signal context */
-void tmk_sig_restore(tmk_exception_frame *frame) {
+void tmk_sig_restore(struct tmk_exception_frame *frame) {
     sigaction(SIGSEGV, &frame->segv_act_old, NULL);
     sigaction(SIGILL, &frame->ill_act_old, NULL);
     sigaction(SIGFPE, &frame->fpe_act_old, NULL);

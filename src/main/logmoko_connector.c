@@ -1,6 +1,6 @@
 #include "logmoko_connector.h"
 
-LMK_API int lmk_open_udp_socket(lmk_udp_socket *udp_socket, lmk_inet_address *local_addr) {
+LMK_API int lmk_open_udp_socket(struct lmk_udp_socket *udp_socket, struct lmk_inet_address *local_addr) {
     int sockd;
     int send_size = LMK_UDP_SOCKET_DEFAULT_SEND_BUFFER_SIZE;
 
@@ -12,20 +12,20 @@ LMK_API int lmk_open_udp_socket(lmk_udp_socket *udp_socket, lmk_inet_address *lo
     return LMK_E_OK;
 }
 
-LMK_API void lmk_close_udp_socket(lmk_udp_socket *udp_socket) {
-    if (udp_socket != NULL) {
+LMK_API void lmk_close_udp_socket(struct lmk_udp_socket *udp_socket) {
+    if (udp_socket) {
         close(udp_socket->sockd);
     }
 }
 
-LMK_API int lmk_send_udp_packet(lmk_udp_socket *udp_socket,
-                                lmk_udp_packet *packet) {
+LMK_API int lmk_send_udp_packet(struct lmk_udp_socket *udp_socket,
+                                struct lmk_udp_packet *packet) {
     int nr_bytes = -1;
 
-    if (udp_socket == NULL) {
+    if (!udp_socket) {
         return LMK_E_NG;
     }
-    if (packet == NULL || packet->buffer == NULL) {
+    if (!packet || !packet->buffer) {
         return LMK_E_NG;
     }
     nr_bytes = sendto(udp_socket->sockd, packet->buffer->addr,
@@ -38,4 +38,3 @@ LMK_API int lmk_send_udp_packet(lmk_udp_socket *udp_socket,
     }
     return LMK_E_OK;
 }
-

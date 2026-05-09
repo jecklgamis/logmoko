@@ -1,8 +1,8 @@
 #include "logmoko.h"
 
 static const char *g_log_level_str[] = {"TRACE", "DEBUG", "INFO", "WARN", "ERROR", "FATAL", "OFF", "UNKNOWN"};
-lmk_list g_lmk_logger_list;
-lmk_list g_lmk_handler_list;
+struct lmk_list g_lmk_logger_list;
+struct lmk_list g_lmk_handler_list;
 static int g_lmk_initialized = 0;
 const char *g_config_file = NULL;
 
@@ -31,16 +31,16 @@ LMK_API void lmk_destroy() {
 #if LMK_DEBUG
     lmk_dump_loggers();
 #endif
-    lmk_list *cursor;
+    struct lmk_list *cursor;
     LMK_FOR_EACH_ENTRY(&g_lmk_logger_list, cursor) {
-        lmk_logger *logger = (lmk_logger *) cursor;
+        struct lmk_logger *logger = (struct lmk_logger *) cursor;
         LMK_SAVE_CURSOR(cursor)
             lmk_destroy_logger(&logger);
         LMK_RESTORE_CURSOR(cursor)
     }
     /* destroy all log handlers. at this point no loggers should be  referencing any log handlers */
     LMK_FOR_EACH_ENTRY(&g_lmk_handler_list, cursor) {
-        lmk_log_handler *handler = (lmk_log_handler *) cursor;
+        struct lmk_log_handler *handler = (struct lmk_log_handler *) cursor;
         LMK_SAVE_CURSOR(cursor)
             lmk_destroy_log_handler(&handler);
         LMK_RESTORE_CURSOR(cursor)
@@ -49,13 +49,13 @@ LMK_API void lmk_destroy() {
     g_config_file = NULL;
 }
 
-lmk_logger *lmk_search_logger_by_name(const char *name) {
-    lmk_list *cursor = NULL;
+struct lmk_logger *lmk_search_logger_by_name(const char *name) {
+    struct lmk_list *cursor = NULL;
     if (!name) {
         return NULL;
     }
     LMK_FOR_EACH_ENTRY(&g_lmk_logger_list, cursor) {
-        lmk_logger *logger = (lmk_logger *) cursor;
+        struct lmk_logger *logger = (struct lmk_logger *) cursor;
         if (!strcmp(logger->name, name)) {
             return logger;
         }
@@ -63,13 +63,13 @@ lmk_logger *lmk_search_logger_by_name(const char *name) {
     return NULL;
 }
 
-lmk_log_handler *lmk_search_log_handler_by_name(const char *name) {
-    lmk_list *cursor = NULL;
+struct lmk_log_handler *lmk_search_log_handler_by_name(const char *name) {
+    struct lmk_list *cursor = NULL;
     if (!name) {
         return NULL;
     }
     LMK_FOR_EACH_ENTRY(&g_lmk_handler_list, cursor) {
-        lmk_log_handler *handler = (lmk_log_handler *) cursor;
+        struct lmk_log_handler *handler = (struct lmk_log_handler *) cursor;
         if (!strcmp(name, handler->name)) {
             return handler;
         }
@@ -78,8 +78,8 @@ lmk_log_handler *lmk_search_log_handler_by_name(const char *name) {
 }
 
 LMK_API void lmk_dump_loggers() {
-    lmk_list *cursor;
-    lmk_list *cursor2;
+    struct lmk_list *cursor;
+    struct lmk_list *cursor2;
 #define LEVEL_1_SEPARATOR "    "
 #define LEVEL_2_SEPARATOR "        "
 #define LEVEL_3_SEPARATOR "            "
@@ -89,7 +89,7 @@ LMK_API void lmk_dump_loggers() {
         if (!lmk_is_list_empty(&g_lmk_handler_list)) {
             fprintf(stdout, "%s+-[Log Handlers]\n", LEVEL_1_SEPARATOR);
             LMK_FOR_EACH_ENTRY(&g_lmk_handler_list, cursor) {
-                lmk_log_handler *handler = (lmk_log_handler *) cursor;
+                struct lmk_log_handler *handler = (struct lmk_log_handler *) cursor;
                 fprintf(stdout, "%s+-handler[name = %s, type = %s, level = %s, logger-refs = %u]\n",
                         LEVEL_2_SEPARATOR,
                         handler->name,
@@ -103,12 +103,12 @@ LMK_API void lmk_dump_loggers() {
             fprintf(stdout, "%s+-[Loggers]\n", LEVEL_1_SEPARATOR);
 
             LMK_FOR_EACH_ENTRY(&g_lmk_logger_list, cursor) {
-                lmk_logger *logger = (lmk_logger *) cursor;
+                struct lmk_logger *logger = (struct lmk_logger *) cursor;
                 fprintf(stdout, "%s+-logger[name = %s, level = %s]\n", LEVEL_2_SEPARATOR, logger->name,
                         lmk_get_log_level_str(logger->log_level));
 
                 LMK_FOR_EACH_ENTRY(&logger->handler_ref_list, cursor2) {
-                    lmk_log_handler *handler = ((lmk_log_handler_ref *) cursor2)->handler;
+                    struct lmk_log_handler *handler = ((struct lmk_log_handler_ref *) cursor2)->handler;
                     fprintf(stdout, "%s+-attached handler[name = %s]\n", LEVEL_3_SEPARATOR, handler->name);
                 }
             }
