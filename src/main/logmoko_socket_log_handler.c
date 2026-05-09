@@ -1,58 +1,99 @@
-
-
 #include "logmoko.h"
 
+static void *lmk_socket_log_handler_thread_routine(void *arg) {
+    struct lmk_socket_log_handler *slh = (struct lmk_socket_log_handler *) arg;
+    char output_buff[LMK_LOG_BUFFER_SIZE];
+
+    while (slh->running || slh->count > 0) {
+        struct lmk_log_request *req = NULL;
+        LMK_LOCK_MUTEX(slh->base.lock);
+        while (slh->count == 0 && slh->running) {
+            LMK_WAIT_COND(slh->cond, slh->base.lock);
+        }
+        if (slh->count > 0) {
+            req = &slh->ring_buffer[slh->tail];
+            const char *level_str = lmk_get_log_level_str(req->log_level);
+            char ts_buff[LMK_TSTAMP_BUFF_SIZE];
+            struct lmk_list *cursor;
+
+            LMK_FOR_EACH_ENTRY(&slh->log_server_list, cursor) {
+                struct lmk_log_server *log_server = (struct lmk_log_server *) cursor;
+                struct lmk_buffer buffer;
+                lmk_get_timestamp(ts_buff, LMK_TSTAMP_BUFF_SIZE);
+                memset(output_buff, 0, LMK_LOG_BUFFER_SIZE);
+                sprintf(output_buff, "[%-5s %s (%s:%d) %s] : %s\n", level_str, ts_buff,
+                        req->file_name, req->line_no, req->handler_name,
+                        req->data);
+                buffer.addr = (unsigned char *) output_buff;
+                buffer.size = strlen(output_buff);
+                struct lmk_udp_packet packet;
+                packet.buffer = &buffer;
+                packet.socket_addr = &log_server->socket_addr;
+                lmk_send_udp_packet(&slh->socket_object, &packet);
+            }
+
+            lmk_free(req->data);
+            lmk_free(req->file_name);
+            lmk_free(req->handler_name);
+            slh->tail = (slh->tail + 1) % LMK_RING_BUFFER_SIZE;
+            slh->count--;
+            LMK_SIGNAL_COND(slh->space_cond);
+        }
+        LMK_UNLOCK_MUTEX(slh->base.lock);
+    }
+    return NULL;
+}
+
 void lmk_socket_log_handler_init(struct lmk_log_handler *handler, void *param) {
-    struct lmk_socket_log_handler *slh = NULL;
-    char ts_buff[LMK_TSTAMP_BUFF_SIZE];
+    struct lmk_socket_log_handler *slh = (struct lmk_socket_log_handler *) handler;
     LMK_LOCK_MUTEX(handler->lock);
-    slh = (struct lmk_socket_log_handler *) handler;
     lmk_init_list(&slh->log_server_list);
     lmk_open_udp_socket(&slh->socket_object, NULL);
+    slh->head = 0;
+    slh->tail = 0;
+    slh->count = 0;
+    slh->running = 1;
+    LMK_INIT_COND(slh->cond);
+    LMK_INIT_COND(slh->space_cond);
+    pthread_create(&slh->thread, NULL, lmk_socket_log_handler_thread_routine, slh);
     LMK_UNLOCK_MUTEX(handler->lock);
 }
 
 void lmk_socket_log_handler_log_impl(struct lmk_log_handler *handler, void *param) {
-    struct lmk_log_record *log_rec = NULL;;
-    struct lmk_socket_log_handler *slh = NULL;
-    struct lmk_list *cursor;
-    char ts_buff[LMK_TSTAMP_BUFF_SIZE];
-    char output_buff[LMK_LOG_BUFFER_SIZE];
+    struct lmk_socket_log_handler *slh = (struct lmk_socket_log_handler *) handler;
+    struct lmk_log_record *log_rec = (struct lmk_log_record *) param;
 
     LMK_LOCK_MUTEX(handler->lock);
-    slh = (struct lmk_socket_log_handler *) handler;
-    log_rec = (struct lmk_log_record *) param;
-    const char *level_str = lmk_get_log_level_str(log_rec->log_level);
-
-    memset(output_buff, 0, LMK_LOG_BUFFER_SIZE);
-
-    LMK_FOR_EACH_ENTRY(&slh->log_server_list, cursor) {
-        struct lmk_log_server *log_server = (struct lmk_log_server *) cursor;
-        struct lmk_buffer buffer;
-        lmk_get_timestamp(ts_buff, LMK_TSTAMP_BUFF_SIZE);
-        memset(output_buff, 0, LMK_LOG_BUFFER_SIZE);
-        sprintf(output_buff, "[%-5s %s (%s:%d) %s] : %s\n", level_str, ts_buff,
-                log_rec->file_name, log_rec->line_no, handler->name,
-                log_rec->data);
-        buffer.addr = (unsigned char *) output_buff;
-        buffer.size = strlen(output_buff);
-        struct lmk_udp_packet packet;
-        packet.buffer = &buffer;
-        packet.socket_addr = &log_server->socket_addr;
-        lmk_send_udp_packet(&slh->socket_object, &packet);
-#ifdef LMK_DEBUG_SOCKET_LOG_HANDLER
-        fprintf(stdout, "Wrote %lu bytes to socket\n", buffer.size);
-#endif
+    while (slh->count == LMK_RING_BUFFER_SIZE && slh->running) {
+        LMK_WAIT_COND(slh->space_cond, handler->lock);
+    }
+    if (slh->running) {
+        struct lmk_log_request *req = &slh->ring_buffer[slh->head];
+        req->log_level = log_rec->log_level;
+        req->line_no = log_rec->line_no;
+        req->data = lmk_strdup(log_rec->data);
+        req->file_name = lmk_strdup(log_rec->file_name);
+        req->handler_name = lmk_strdup(handler->name);
+        slh->head = (slh->head + 1) % LMK_RING_BUFFER_SIZE;
+        slh->count++;
+        handler->nr_log_calls++;
+        LMK_SIGNAL_COND(slh->cond);
     }
     LMK_UNLOCK_MUTEX(handler->lock);
 }
 
 void lmk_socket_log_handler_destroy(struct lmk_log_handler *handler, void *param) {
-    struct lmk_socket_log_handler *slh = NULL;
+    struct lmk_socket_log_handler *slh = (struct lmk_socket_log_handler *) handler;
     struct lmk_list *cursor;
     LMK_LOCK_MUTEX(handler->lock);
-    slh = (struct lmk_socket_log_handler *) handler;
+    slh->running = 0;
+    LMK_SIGNAL_COND(slh->cond);
+    LMK_UNLOCK_MUTEX(handler->lock);
+    pthread_join(slh->thread, NULL);
+    LMK_DESTROY_COND(slh->cond);
+    LMK_DESTROY_COND(slh->space_cond);
 
+    LMK_LOCK_MUTEX(handler->lock);
     LMK_FOR_EACH_ENTRY(&slh->log_server_list, cursor) {
         struct lmk_log_server *log_server = (struct lmk_log_server *) cursor;
         LMK_SAVE_CURSOR(cursor);
@@ -84,4 +125,3 @@ LMK_API void lmk_attach_log_listener(struct lmk_log_handler *handler, const char
     }
     LMK_UNLOCK_MUTEX(handler->lock);
 }
-

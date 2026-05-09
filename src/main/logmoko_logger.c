@@ -321,7 +321,6 @@ int lmk_log_impl(struct lmk_logger *logger, const char *file_name, const int lin
                 log_rec->line_no = line_no;
                 log_rec->file_name = (char *) file_name;
                 handler->log_impl(handler, log_rec);
-                handler->nr_log_calls++;
             }
         }
     }

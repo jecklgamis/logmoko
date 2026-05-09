@@ -12,6 +12,10 @@ extern void lmk_file_log_handler_destroy(struct lmk_log_handler *handler, void *
 
 extern void lmk_file_log_handler_log_impl(struct lmk_log_handler *handler, void *param);
 
+extern void lmk_console_log_handler_init(struct lmk_log_handler *handler, void *param);
+
+extern void lmk_console_log_handler_destroy(struct lmk_log_handler *handler, void *param);
+
 extern void lmk_console_log_handler_log_impl(struct lmk_log_handler *handler, void *param);
 
 extern struct lmk_list g_lmk_handler_list;
@@ -33,6 +37,7 @@ void lmk_init_base_log_handler(struct lmk_log_handler *handler, int type,
         handler->log_impl = log_impl;
         handler->type = type;
         handler->log_level = LMK_LOG_LEVEL_INFO;
+        LMK_INIT_MUTEX(handler->lock);
     }
 }
 
@@ -45,9 +50,11 @@ LMK_API struct lmk_log_handler *lmk_get_console_log_handler() {
         return handler;
     }
     if ((clh = (struct lmk_console_log_handler *) lmk_malloc(sizeof(struct lmk_console_log_handler))) != NULL) {
-        lmk_init_base_log_handler(&clh->base, LMK_LOG_HANDLER_TYPE_CONSOLE, NULL, NULL,
+        lmk_init_base_log_handler(&clh->base, LMK_LOG_HANDLER_TYPE_CONSOLE,
+                                  lmk_console_log_handler_init, lmk_console_log_handler_destroy,
                                   lmk_console_log_handler_log_impl, "console");
         lmk_insert_list(&g_lmk_handler_list, &clh->base.link);
+        clh->base.init(&clh->base, NULL);
         clh->base.initialized = 1;
     }
     return ((struct lmk_log_handler *) clh);
@@ -117,10 +124,11 @@ int lmk_destroy_log_handler(struct lmk_log_handler **handler_addr) {
         handler->destroy(handler, NULL);
     }
     lmk_remove_list(&handler->link);
-    lmk_free(handler);
     if (handler->name != NULL) {
         lmk_free((void *) handler->name);
     }
+    LMK_DESTROY_MUTEX(handler->lock);
+    lmk_free(handler);
     *handler_addr = NULL;
     return LMK_E_OK;
 }

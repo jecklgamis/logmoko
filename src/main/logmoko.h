@@ -82,11 +82,30 @@ struct lmk_log_handler {
 /* The format of the log handler implementation functions */
 typedef void (*lmk_log_handler_function)(struct lmk_log_handler *, void *);
 
+/* Log request for asynchronous handlers */
+#define LMK_RING_BUFFER_SIZE 32
+
+struct lmk_log_request {
+    int log_level;
+    char *data;
+    int line_no;
+    char *file_name;
+    char *handler_name; /* Added to support socket/file handler specific context if needed */
+};
+
 /* The file log handler */
 struct lmk_file_log_handler {
     struct lmk_log_handler base;
     const char *filename;
     FILE *log_fp;
+    struct lmk_log_request ring_buffer[LMK_RING_BUFFER_SIZE];
+    int head;
+    int tail;
+    int count;
+    pthread_t thread;
+    int running;
+    lmk_cond cond;
+    lmk_cond space_cond;
 };
 
 /* File log handler properties */
@@ -99,6 +118,14 @@ enum {
 /* The console log handler */
 struct lmk_console_log_handler {
     struct lmk_log_handler base;
+    struct lmk_log_request ring_buffer[LMK_RING_BUFFER_SIZE];
+    int head;
+    int tail;
+    int count;
+    pthread_t thread;
+    int running;
+    lmk_cond cond;
+    lmk_cond space_cond;
 };
 
 /* The socket log handler */
@@ -106,6 +133,14 @@ struct lmk_socket_log_handler {
     struct lmk_log_handler base;
     struct lmk_list log_server_list;
     struct lmk_udp_socket socket_object;
+    struct lmk_log_request ring_buffer[LMK_RING_BUFFER_SIZE];
+    int head;
+    int tail;
+    int count;
+    pthread_t thread;
+    int running;
+    lmk_cond cond;
+    lmk_cond space_cond;
 };
 
 /* The serial log handler */
