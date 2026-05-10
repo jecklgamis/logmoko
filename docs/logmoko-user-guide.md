@@ -41,16 +41,15 @@ LMK_LOG_LEVEL_DEBUG
 LMK_LOG_LEVEL_INFO
 LMK_LOG_LEVEL_WARN
 LMK_LOG_LEVEL_ERROR
-LMK_LOG_LEVEL_FATAL
 LMK_LOG_LEVEL_OFF
 ```
 
 A logger can be assigned a log level that is used to filter out log requests. Below is the hierarchy of the log levels.
 ```
-TRACE < DEBUG < INFO < WARN < ERROR < FATAL
+TRACE < DEBUG < INFO < WARN < ERROR
 ```
 As a general rule, if the logger has log level l, the request is logged , if u >= l. As an example, if the logger's 
-log level is INFO, log requests with level INFO, WARN, ERROR, and FATAL will be logged while DEBUG and TRACE  logs 
+log level is INFO, log requests with level INFO, WARN, and ERROR will be logged while DEBUG and TRACE  logs 
 will be ignored.
 
 To a log a message with specific log level, use the following API macros. These macros accept arguments similar to `fprintf`.
@@ -62,7 +61,6 @@ LMK_LOG_DEBUG(logger, format...)
 LMK_LOG_INFO(logger, format...)
 LMK_LOG_WARN(logger, format...)
 LMK_LOG_INFO(logger, format...)
-LMK_LOG_FATAL(logger, format...)
 LMK_IS_LOG_ENABLED(logger_or_handler, level)
 ```
 
@@ -74,16 +72,16 @@ LMK_LOG_INFO(logger, "This is an INFO log with integer param : %d", 1024);
 
 ### Log Handlers
 A logger uses one or more handlers to do the actual logging to a specific interface. Logmoko supports console
-file, and socket log handler types. Log handlers are created with default log level set to `LMK_LOG_LEVEL_TRACE`.
+file, and socket log handler types. Log handlers are created with default log level set to `LMK_LOG_LEVEL_INFO`.
 
 API
 ```
-lmk_log_handler *lmk_get_console_log_handler();
-lmk_log_handler *lmk_get_file_log_handler(const char *name, const char *filename);
-lmk_log_handler *lmk_get_socket_log_handler(const char *name);
+struct lmk_log_handler *lmk_get_console_log_handler();
+struct lmk_log_handler *lmk_get_file_log_handler(const char *name, const char *filename);
+struct lmk_log_handler *lmk_get_socket_log_handler(const char *name);
 int lmk_attach_log_handler(lmk_logger *logger, lmk_log_handler *handler);
 int lmk_detach_log_handler(lmk_logger *logger, lmk_log_handler *handler);
-lmk_log_handler *lmk_get_socket_log_handler(const char* name);
+struct lmk_log_handler *lmk_get_socket_log_handler(const char* name);
 void lmk_attach_log_listener(lmk_log_handler *handler, const char *host, int port);
 void lmk_set_handler_log_level(lmk_log_handler *handler, int log_level);
 int lmk_get_handler_log_level(lmk_log_handler *handler) ;
