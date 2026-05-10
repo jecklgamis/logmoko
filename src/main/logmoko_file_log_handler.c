@@ -37,7 +37,7 @@ void lmk_file_log_handler_init(struct lmk_log_handler *handler, void *param) {
         fclose(flh->log_fp);
         flh->log_fp = NULL;
     }
-    if ((flh->log_fp = fopen(flh->filename, "wt")) == NULL) {
+    if ((flh->log_fp = fopen(flh->filename, "at")) == NULL) {
         fprintf(stderr, "Unable to open file for writing : %s (%s:%d)\n",
                 flh->filename, __FILE__, __LINE__);
     }
