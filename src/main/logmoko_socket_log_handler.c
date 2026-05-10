@@ -2,7 +2,7 @@
 
 static void *lmk_socket_log_handler_thread_routine(void *arg) {
     struct lmk_socket_log_handler *slh = (struct lmk_socket_log_handler *) arg;
-    char output_buff[g_lmk_config->log_buffer_size];
+    char output_buff[lmk_get_config()->log_buffer_size];
 
     while (slh->running || slh->count > 0) {
         struct lmk_log_request *req = NULL;
@@ -20,7 +20,7 @@ static void *lmk_socket_log_handler_thread_routine(void *arg) {
                 struct lmk_log_server *log_server = (struct lmk_log_server *) cursor;
                 struct lmk_buffer buffer;
                 lmk_get_timestamp(ts_buff, LMK_TSTAMP_BUFF_SIZE);
-                memset(output_buff, 0, g_lmk_config->log_buffer_size);
+                memset(output_buff, 0, lmk_get_config()->log_buffer_size);
                 sprintf(output_buff, "[%-5s %s (%s:%d) %s] : %s\n", level_str, ts_buff,
                         req->file_name, req->line_no, req->handler_name,
                         req->data);
@@ -35,7 +35,7 @@ static void *lmk_socket_log_handler_thread_routine(void *arg) {
             lmk_free(req->data);
             lmk_free(req->file_name);
             lmk_free(req->handler_name);
-            slh->tail = (slh->tail + 1) % g_lmk_config->ring_buffer_size;
+            slh->tail = (slh->tail + 1) % lmk_get_config()->ring_buffer_size;
             slh->count--;
         }
         LMK_UNLOCK_MUTEX(slh->base.lock);
@@ -52,7 +52,7 @@ void lmk_socket_log_handler_init(struct lmk_log_handler *handler, void *param) {
     slh->tail = 0;
     slh->count = 0;
     slh->running = 1;
-    slh->ring_buffer = lmk_malloc(sizeof(struct lmk_log_request) * g_lmk_config->ring_buffer_size);
+    slh->ring_buffer = lmk_malloc(sizeof(struct lmk_log_request) * lmk_get_config()->ring_buffer_size);
     if (!slh->ring_buffer) {
         fprintf(stderr, "Unable to allocate ring buffer");
         LMK_UNLOCK_MUTEX(handler->lock);
@@ -68,14 +68,14 @@ void lmk_socket_log_handler_log_impl(struct lmk_log_handler *handler, void *para
     struct lmk_log_record *log_rec = (struct lmk_log_record *) param;
 
     LMK_LOCK_MUTEX(handler->lock);
-    if (slh->count < g_lmk_config->ring_buffer_size && slh->running) {
+    if (slh->count < lmk_get_config()->ring_buffer_size && slh->running) {
         struct lmk_log_request *req = &slh->ring_buffer[slh->head];
         req->log_level = log_rec->log_level;
         req->line_no = log_rec->line_no;
         req->data = lmk_strdup(log_rec->data);
         req->file_name = lmk_strdup(log_rec->file_name);
         req->handler_name = lmk_strdup(handler->name);
-        slh->head = (slh->head + 1) % g_lmk_config->ring_buffer_size;
+        slh->head = (slh->head + 1) % lmk_get_config()->ring_buffer_size;
         slh->count++;
         handler->nr_log_calls++;
         LMK_SIGNAL_COND(slh->cond);

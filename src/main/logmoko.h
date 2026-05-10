@@ -27,7 +27,6 @@ struct lmk_config {
     unsigned int default_level;
 };
 
-extern struct lmk_config *g_lmk_config;
 
 enum {
     LMK_LOG_LEVEL_TRACE = 0,
@@ -234,8 +233,6 @@ extern struct lmk_list *lmk_get_handlers();
 
 extern void lmk_attach_log_listener(struct lmk_log_handler *handler, const char *ip, int port);
 
-extern void die(const char *msg);
-
-extern struct lmk_config *g_lmk_config;
+extern struct lmk_config *lmk_get_config();
 
 #endif /* LOGMOKO_H */

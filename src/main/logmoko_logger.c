@@ -9,7 +9,6 @@ extern int lmk_init_log_handler(struct lmk_log_handler *handler);
 int lmk_log_impl(struct lmk_logger *logger, const char *file_name, const int line_no,
                  int log_level, const char *data);
 
-extern struct lmk_config *g_lmk_config;
 
 /* Retrieves a named logger or creates a new one if it does not exist */
 LMK_API struct lmk_logger *lmk_get_logger(const char *name) {
@@ -29,7 +28,7 @@ LMK_API struct lmk_logger *lmk_get_logger(const char *name) {
         }
         lmk_init_list(&logger->handler_ref_list);
         lmk_insert_list(&g_lmk_logger_list, &logger->link);
-        logger->log_buff = lmk_malloc(g_lmk_config->log_buffer_size);
+        logger->log_buff = lmk_malloc(lmk_get_config()->log_buffer_size);
         if (!logger->log_buff) {
             fprintf(stderr, "Unable to allocate log buffer\n");
             return NULL;
@@ -188,7 +187,7 @@ LMK_API void lmk_log_trace(struct lmk_logger *logger, const char *file_name,
     lmk_init();
     if (logger != NULL && LMK_IS_LOG_ENABLED(logger, LMK_LOG_LEVEL_TRACE)) {
         LMK_LOCK_MUTEX(logger->log_lock);
-        memset(logger->log_buff, 0, g_lmk_config->log_buffer_size);
+        memset(logger->log_buff, 0, lmk_get_config()->log_buffer_size);
         va_start(ap, format);
         vsprintf(logger->log_buff, format, ap);
         va_end(ap);
@@ -204,7 +203,7 @@ LMK_API void lmk_log_info(struct lmk_logger *logger, const char *file_name,
     if (logger != NULL && LMK_IS_LOG_ENABLED(logger, LMK_LOG_LEVEL_INFO)) {
         LMK_LOCK_MUTEX(logger->log_lock);
         va_list ap;
-        memset(logger->log_buff, 0, g_lmk_config->log_buffer_size);
+        memset(logger->log_buff, 0, lmk_get_config()->log_buffer_size);
         va_start(ap, format);
         vsprintf(logger->log_buff, format, ap);
         va_end(ap);
@@ -220,7 +219,7 @@ LMK_API void lmk_log_debug(struct lmk_logger *logger, const char *file_name,
     lmk_init();
     if (logger != NULL && LMK_IS_LOG_ENABLED(logger, LMK_LOG_LEVEL_DEBUG)) {
         LMK_LOCK_MUTEX(logger->log_lock);
-        memset(logger->log_buff, 0, g_lmk_config->log_buffer_size);
+        memset(logger->log_buff, 0, lmk_get_config()->log_buffer_size);
         va_start(ap, format);
         vsprintf(logger->log_buff, format, ap);
         va_end(ap);
@@ -236,7 +235,7 @@ LMK_API void lmk_log_warn(struct lmk_logger *logger, const char *file_name,
     lmk_init();
     if (logger != NULL && LMK_IS_LOG_ENABLED(logger, LMK_LOG_LEVEL_WARN)) {
         LMK_LOCK_MUTEX(logger->log_lock);
-        memset(logger->log_buff, 0, g_lmk_config->log_buffer_size);
+        memset(logger->log_buff, 0, lmk_get_config()->log_buffer_size);
         va_start(ap, format);
         vsprintf(logger->log_buff, format, ap);
         va_end(ap);
@@ -252,7 +251,7 @@ LMK_API void lmk_log_error(struct lmk_logger *logger, const char *file_name,
     lmk_init();
     if (logger != NULL && LMK_IS_LOG_ENABLED(logger, LMK_LOG_LEVEL_ERROR)) {
         LMK_LOCK_MUTEX(logger->log_lock);
-        memset(logger->log_buff, 0, g_lmk_config->log_buffer_size);
+        memset(logger->log_buff, 0, lmk_get_config()->log_buffer_size);
         va_start(ap, format);
         vsprintf(logger->log_buff, format, ap);
         va_end(ap);
