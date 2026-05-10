@@ -21,7 +21,7 @@ static void *lmk_socket_log_handler_thread_routine(void *arg) {
                 struct lmk_buffer buffer;
                 lmk_get_timestamp(ts_buff, LMK_TSTAMP_BUFF_SIZE);
                 memset(output_buff, 0, g_lmk_config->log_buffer_size);
-                sprintf(output_buff, "[%-5s %s (%s:%d) %s] : %s\n", level_str, ts_buff,
+                sprintf(output_buff, "[%s %s (%s:%d) %s] : %s\n", level_str, ts_buff,
                         req->file_name, req->line_no, req->handler_name,
                         req->data);
                 buffer.addr = (unsigned char *) output_buff;

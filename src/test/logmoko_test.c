@@ -480,6 +480,21 @@ TMK_TEST(lmk_test_socket_log_handler) {
     lmk_destroy();
 }
 
+TMK_TEST(lmk_test_file_write_perf) {
+    struct lmk_logger *logger = lmk_get_logger("logger");
+    struct lmk_log_handler *flh = lmk_get_file_log_handler("file-handler", "perf-test.log");
+    lmk_attach_log_handler(logger, flh);
+    struct timespec start, end;
+    clock_gettime(CLOCK_MONOTONIC, &start);
+    int nr_iterations = 100*10000;
+    for(int a=0;a <nr_iterations;a++) {
+        LMK_LOG_INFO(logger, "This is an info log %d", a);
+    }
+    clock_gettime(CLOCK_MONOTONIC, &end);
+    double elapsed = (end.tv_sec - start.tv_sec) +  (end.tv_nsec - start.tv_nsec) / 1e9;
+    printf("Elapsed time: %.6f seconds writing %d logs\n", elapsed,nr_iterations);
+}
+
 TMK_TEST_FUNCTION_TABLE_START(test_function_table)
     TMK_INCLUDE_TEST(lmk_test_create_and_destroy_logger)
     TMK_INCLUDE_TEST(lmk_test_null_logger)
@@ -496,6 +511,7 @@ TMK_TEST_FUNCTION_TABLE_START(test_function_table)
     TMK_INCLUDE_TEST(lmk_test_multiple_threads)
     TMK_INCLUDE_TEST(lmk_test_console_log_handler)
     TMK_INCLUDE_TEST(lmk_test_socket_log_handler)
+    TMK_INCLUDE_TEST(lmk_test_file_write_perf)
 TMK_TEST_FUNCTION_TABLE_END
 
 void tmk_setup() {

@@ -13,7 +13,7 @@ static void *lmk_console_log_handler_thread_routine(void *arg) {
             const char *level_str = lmk_get_log_level_str(req->log_level);
             char timestamp[LMK_TSTAMP_BUFF_SIZE];
             lmk_get_timestamp(timestamp, LMK_TSTAMP_BUFF_SIZE);
-            fprintf(stdout, "[%-5s %s (%s:%d)] : %s\n", level_str, timestamp, req->file_name, req->line_no,
+            fprintf(stdout, "[%s %s (%s:%d)] : %s\n", level_str, timestamp, req->file_name, req->line_no,
                     req->data);
             fflush(stdout);
             lmk_free(req->data);
