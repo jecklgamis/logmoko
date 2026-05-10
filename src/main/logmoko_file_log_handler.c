@@ -14,7 +14,7 @@ static void *lmk_file_log_handler_thread_routine(void *arg) {
                 const char *level_str = lmk_get_log_level_str(req->log_level);
                 char ts_buff[LMK_TSTAMP_BUFF_SIZE];
                 lmk_get_timestamp(ts_buff, LMK_TSTAMP_BUFF_SIZE);
-                fprintf(flh->log_fp, "[%s %s (%s:%d) %s] : %s\n", level_str, ts_buff,
+                fprintf(flh->log_fp, "[%-5s %s (%s:%d) %s] : %s\n", level_str, ts_buff,
                         req->file_name, req->line_no, req->handler_name,
                         req->data);
                 fflush(flh->log_fp);

@@ -46,8 +46,6 @@ int main(int argc, char *argv[]) {
     LMK_LOG_INFO(logger, "This is an info log");
     LMK_LOG_WARN(logger, "This is a warn log");
     LMK_LOG_ERROR(logger, "This is an error log");
-    LMK_LOG_FATAL(logger, "This is a fatal log");
-
     /* Clean up */
     lmk_destroy();
     return EXIT_SUCCESS;
@@ -68,7 +66,6 @@ $ ./example_app
 [INFO  Fri Apr 10 14:23:08 2020 (example_app.c:21)] : This is an info log
 [WARN  Fri Apr 10 14:23:08 2020 (example_app.c:22)] : This is a warn log
 [ERROR Fri Apr 10 14:23:08 2020 (example_app.c:23)] : This is an error log
-[FATAL Fri Apr 10 14:23:08 2020 (example_app.c:24)] : This is a fatal log
 ```
 
 See the [Logmoko User Guide](docs/logmoko-user-guide.md) for more details.

@@ -36,7 +36,7 @@ void lmk_init_base_log_handler(struct lmk_log_handler *handler, int type,
         handler->destroy = destroy;
         handler->log_impl = log_impl;
         handler->type = type;
-        handler->log_level = LMK_LOG_LEVEL_INFO;
+        handler->log_level = LMK_LOG_LEVEL_TRACE;
         LMK_INIT_MUTEX(handler->lock);
     }
 }
