@@ -15,7 +15,7 @@ void tmk_log_impl(const char *filename, const int line_no, const char *format, .
     va_start(ap, format);
     vsprintf(local_log_buff, format, ap);
     va_end(ap);
-    fprintf(stdout, "[TEST] %s\n", local_log_buff);
+    fprintf(stdout, "[TESTMOKO] %s\n", local_log_buff);
 }
 
 void tmk_assert_impl(int cond, const char *filename, const char *func_name,

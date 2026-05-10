@@ -2,7 +2,11 @@
 #include <string.h>
 
 void *lmk_malloc(size_t size) {
-    return (void *) malloc(size);
+    void *ptr = (void*)malloc(size);
+    if (ptr) {
+        memset(ptr, 0, size);
+    }
+    return (void*)ptr;
 }
 
 void lmk_free(void *addr) {

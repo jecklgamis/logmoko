@@ -12,35 +12,29 @@
 
 #include "logmoko_list.h"
 
-/* Socket address */
 struct lmk_inet_socket_address {
     struct sockaddr_in addr;
 };
 
-/* Socket address */
 struct lmk_inet_address {
     char ipv4_addr[32];
 };
 
-/* List of server listeners */
 struct lmk_log_server {
     struct lmk_list link;
     struct lmk_inet_socket_address socket_addr;
 };
 
-/* A memory buffer */
 struct lmk_buffer {
     unsigned char *addr;
     size_t size;
 };
 
-/* Datagram packet */
 struct lmk_udp_packet {
     struct lmk_inet_socket_address *socket_addr;
     struct lmk_buffer *buffer;
 };
 
-/* UDP socket */
 struct lmk_udp_socket {
     int sockd;
     struct lmk_inet_address local_addr;

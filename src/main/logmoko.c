@@ -1,25 +1,50 @@
 #include "logmoko.h"
 
-static const char *g_log_level_str[] = {"TRACE", "DEBUG", "INFO", "WARN", "ERROR", "FATAL", "OFF", "UNKNOWN"};
+static const char *g_log_level_str[] = {"TRACE", "DEBUG", "INFO", "WARN", "ERROR", "OFF", "UNKNOWN"};
 struct lmk_list g_lmk_logger_list;
 struct lmk_list g_lmk_handler_list;
 static int g_lmk_initialized = 0;
 const char *g_config_file = NULL;
+struct lmk_config *g_lmk_config = NULL;
 
 const char *lmk_get_log_level_str(int log_level);
 
 extern const char *lmk_get_log_handler_type_str(int type);
 
-void lmk_configure(const char *config_file) {
-    if (config_file != NULL) {
-        g_config_file = config_file;
+int get_unsigned_int_key_from_env(const char *name, int fallback) {
+    char *value = getenv(name);
+    if (!value) {
+        return fallback;
     }
+    return (unsigned int) atoi(value);
+}
+
+struct lmk_config *lmk_get_config() {
+    struct lmk_config *config = lmk_malloc(sizeof(struct lmk_config));
+    if (!config) {
+        fprintf(stderr, "Unable to allocate config");
+        return NULL;
+    }
+    config->log_buffer_size = get_unsigned_int_key_from_env("LMK_LOG_BUFFER_SIZE", 2048);
+    config->ring_buffer_size = get_unsigned_int_key_from_env("LMK_RING_BUFFER_SIZE", 128);
+    config->default_level = LMK_LOG_LEVEL_INFO;
+#if LMK_DEBUG
+    fprintf(stdout, "Using log_buffer_size = %d\n", config->log_buffer_size);
+    fprintf(stdout, "Using ring_buffer_size = %d\n", config->ring_buffer_size);
+    fprintf(stdout, "Using default_level = %d\n", config->default_level);
+#endif
+    return config;
 }
 
 void lmk_init() {
     if (!g_lmk_initialized) {
         lmk_init_list(&g_lmk_logger_list);
         lmk_init_list(&g_lmk_handler_list);
+        g_lmk_config = lmk_get_config();
+        if (!g_lmk_config) {
+            printf("Unable to initialize");
+            return;
+        }
         g_lmk_initialized = 1;
     }
 }
@@ -132,3 +157,4 @@ LMK_API int lmk_get_nr_handlers() {
     lmk_init();
     return lmk_get_list_size(&g_lmk_handler_list);
 }
+

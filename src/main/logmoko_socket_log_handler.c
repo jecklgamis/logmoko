@@ -2,7 +2,7 @@
 
 static void *lmk_socket_log_handler_thread_routine(void *arg) {
     struct lmk_socket_log_handler *slh = (struct lmk_socket_log_handler *) arg;
-    char output_buff[LMK_LOG_BUFFER_SIZE];
+    char output_buff[g_lmk_config->log_buffer_size];
 
     while (slh->running || slh->count > 0) {
         struct lmk_log_request *req = NULL;
@@ -20,7 +20,7 @@ static void *lmk_socket_log_handler_thread_routine(void *arg) {
                 struct lmk_log_server *log_server = (struct lmk_log_server *) cursor;
                 struct lmk_buffer buffer;
                 lmk_get_timestamp(ts_buff, LMK_TSTAMP_BUFF_SIZE);
-                memset(output_buff, 0, LMK_LOG_BUFFER_SIZE);
+                memset(output_buff, 0, g_lmk_config->log_buffer_size);
                 sprintf(output_buff, "[%-5s %s (%s:%d) %s] : %s\n", level_str, ts_buff,
                         req->file_name, req->line_no, req->handler_name,
                         req->data);
@@ -35,9 +35,8 @@ static void *lmk_socket_log_handler_thread_routine(void *arg) {
             lmk_free(req->data);
             lmk_free(req->file_name);
             lmk_free(req->handler_name);
-            slh->tail = (slh->tail + 1) % LMK_RING_BUFFER_SIZE;
+            slh->tail = (slh->tail + 1) % g_lmk_config->ring_buffer_size;
             slh->count--;
-            LMK_SIGNAL_COND(slh->space_cond);
         }
         LMK_UNLOCK_MUTEX(slh->base.lock);
     }
@@ -53,8 +52,13 @@ void lmk_socket_log_handler_init(struct lmk_log_handler *handler, void *param) {
     slh->tail = 0;
     slh->count = 0;
     slh->running = 1;
+    slh->ring_buffer = lmk_malloc(sizeof(struct lmk_log_request) * g_lmk_config->ring_buffer_size);
+    if (!slh->ring_buffer) {
+        fprintf(stderr, "Unable to allocate ring buffer");
+        LMK_UNLOCK_MUTEX(handler->lock);
+        return;
+    }
     LMK_INIT_COND(slh->cond);
-    LMK_INIT_COND(slh->space_cond);
     pthread_create(&slh->thread, NULL, lmk_socket_log_handler_thread_routine, slh);
     LMK_UNLOCK_MUTEX(handler->lock);
 }
@@ -64,20 +68,21 @@ void lmk_socket_log_handler_log_impl(struct lmk_log_handler *handler, void *para
     struct lmk_log_record *log_rec = (struct lmk_log_record *) param;
 
     LMK_LOCK_MUTEX(handler->lock);
-    while (slh->count == LMK_RING_BUFFER_SIZE && slh->running) {
-        LMK_WAIT_COND(slh->space_cond, handler->lock);
-    }
-    if (slh->running) {
+    if (slh->count < g_lmk_config->ring_buffer_size && slh->running) {
         struct lmk_log_request *req = &slh->ring_buffer[slh->head];
         req->log_level = log_rec->log_level;
         req->line_no = log_rec->line_no;
         req->data = lmk_strdup(log_rec->data);
         req->file_name = lmk_strdup(log_rec->file_name);
         req->handler_name = lmk_strdup(handler->name);
-        slh->head = (slh->head + 1) % LMK_RING_BUFFER_SIZE;
+        slh->head = (slh->head + 1) % g_lmk_config->ring_buffer_size;
         slh->count++;
         handler->nr_log_calls++;
         LMK_SIGNAL_COND(slh->cond);
+    } else {
+#if LMK_DEBUG
+        fprintf(stderr, "WARNING: Socket ring buffer full, dropping log\n");
+#endif
     }
     LMK_UNLOCK_MUTEX(handler->lock);
 }
@@ -91,7 +96,6 @@ void lmk_socket_log_handler_destroy(struct lmk_log_handler *handler, void *param
     LMK_UNLOCK_MUTEX(handler->lock);
     pthread_join(slh->thread, NULL);
     LMK_DESTROY_COND(slh->cond);
-    LMK_DESTROY_COND(slh->space_cond);
 
     LMK_LOCK_MUTEX(handler->lock);
     LMK_FOR_EACH_ENTRY(&slh->log_server_list, cursor) {

@@ -53,18 +53,19 @@ TMK_TEST(lmk_test_logger_log_levels) {
 
     struct lmk_log_handler *clh = lmk_get_console_log_handler();
     TMK_ASSERT_NOT_NULL(clh);
+
+    clh->nr_log_calls = 0;
     lmk_set_handler_log_level(clh, LMK_LOG_LEVEL_TRACE);
 
     lmk_attach_log_handler(logger, clh);
 
     LMK_LOG_TRACE(logger, "This is a trace log");
-    LMK_LOG_INFO(logger, "This is a debug log");
+    LMK_LOG_INFO(logger, "This is a info log");
     LMK_LOG_DEBUG(logger, "This is an info log");
     LMK_LOG_WARN(logger, "This is a warn log");
     LMK_LOG_ERROR(logger, "This is an error log");
-    LMK_LOG_FATAL(logger, "This is a fatal log");
 
-    TMK_ASSERT_EQUAL(6, clh->nr_log_calls);
+    TMK_ASSERT_EQUAL(5, clh->nr_log_calls);
 
     clh->nr_log_calls = 0;
     lmk_set_handler_log_level(clh, LMK_LOG_LEVEL_DEBUG);
@@ -74,9 +75,9 @@ TMK_TEST(lmk_test_logger_log_levels) {
     LMK_LOG_DEBUG(logger, "This is an info log");
     LMK_LOG_WARN(logger, "This is a warn log");
     LMK_LOG_ERROR(logger, "This is an error log");
-    LMK_LOG_FATAL(logger, "This is a fatal log");
 
-    TMK_ASSERT_EQUAL(5, clh->nr_log_calls);
+
+    TMK_ASSERT_EQUAL(4, clh->nr_log_calls);
 
     clh->nr_log_calls = 0;
     lmk_set_handler_log_level(clh, LMK_LOG_LEVEL_INFO);
@@ -86,9 +87,9 @@ TMK_TEST(lmk_test_logger_log_levels) {
     LMK_LOG_DEBUG(logger, "This is an info log");
     LMK_LOG_WARN(logger, "This is a warn log");
     LMK_LOG_ERROR(logger, "This is an error log");
-    LMK_LOG_FATAL(logger, "This is a fatal log");
 
-    TMK_ASSERT_EQUAL(4, clh->nr_log_calls);
+    TMK_ASSERT_EQUAL(3, clh->nr_log_calls);
+
 
     clh->nr_log_calls = 0;
     lmk_set_handler_log_level(clh, LMK_LOG_LEVEL_WARN);
@@ -98,9 +99,8 @@ TMK_TEST(lmk_test_logger_log_levels) {
     LMK_LOG_DEBUG(logger, "This is an info log");
     LMK_LOG_WARN(logger, "This is a warn log");
     LMK_LOG_ERROR(logger, "This is an error log");
-    LMK_LOG_FATAL(logger, "This is a fatal log");
 
-    TMK_ASSERT_EQUAL(3, clh->nr_log_calls);
+    TMK_ASSERT_EQUAL(2, clh->nr_log_calls);
 
     clh->nr_log_calls = 0;
     lmk_set_handler_log_level(clh, LMK_LOG_LEVEL_ERROR);
@@ -110,31 +110,16 @@ TMK_TEST(lmk_test_logger_log_levels) {
     LMK_LOG_DEBUG(logger, "This is an info log");
     LMK_LOG_WARN(logger, "This is a warn log");
     LMK_LOG_ERROR(logger, "This is an error log");
-    LMK_LOG_FATAL(logger, "This is a fatal log");
-
-    TMK_ASSERT_EQUAL(2, clh->nr_log_calls);
-
-    clh->nr_log_calls = 0;
-    lmk_set_handler_log_level(clh, LMK_LOG_LEVEL_FATAL);
-
-    LMK_LOG_TRACE(logger, "This is a trace log");
-    LMK_LOG_INFO(logger, "This is a debug log");
-    LMK_LOG_DEBUG(logger, "This is an info log");
-    LMK_LOG_WARN(logger, "This is a warn log");
-    LMK_LOG_ERROR(logger, "This is an error log");
-    LMK_LOG_FATAL(logger, "This is a fatal log");
 
     TMK_ASSERT_EQUAL(1, clh->nr_log_calls);
 
     clh->nr_log_calls = 0;
     lmk_set_handler_log_level(clh, LMK_LOG_LEVEL_OFF);
-
     LMK_LOG_TRACE(logger, "This is a trace log");
     LMK_LOG_INFO(logger, "This is a debug log");
     LMK_LOG_DEBUG(logger, "This is an info log");
     LMK_LOG_WARN(logger, "This is a warn log");
     LMK_LOG_ERROR(logger, "This is an error log");
-    LMK_LOG_FATAL(logger, "This is a fatal log");
 
     TMK_ASSERT_EQUAL(0, clh->nr_log_calls);
 
@@ -143,14 +128,11 @@ TMK_TEST(lmk_test_logger_log_levels) {
      * is more restrictive than the logger.
      */
     clh->nr_log_calls = 0;
-
     lmk_set_log_level(logger, LMK_LOG_LEVEL_WARN);
     lmk_set_handler_log_level(clh, LMK_LOG_LEVEL_ERROR);
-
     LMK_LOG_WARN(logger, "This is a warn log");
-    LMK_LOG_FATAL(logger, "This is a fatal log");
 
-    TMK_ASSERT_EQUAL(1, clh->nr_log_calls);
+    TMK_ASSERT_EQUAL(0, clh->nr_log_calls);
 
     /*
      * Verify that if the handler log level is less restrictive than the logger
@@ -163,9 +145,8 @@ TMK_TEST(lmk_test_logger_log_levels) {
     lmk_set_handler_log_level(clh, LMK_LOG_LEVEL_INFO);
 
     LMK_LOG_WARN(logger, "This is a warn log");
-    LMK_LOG_FATAL(logger, "This is a fatal log");
 
-    TMK_ASSERT_EQUAL(2, clh->nr_log_calls);
+    TMK_ASSERT_EQUAL(1, clh->nr_log_calls);
 
     lmk_destroy();
 }
@@ -445,9 +426,9 @@ TMK_TEST(lmk_test_multiple_threads) {
     TMK_ASSERT_NOT_NULL(flh);
     lmk_set_handler_log_level(flh, LMK_LOG_LEVEL_TRACE);
 
-    struct lmk_log_handler *clh = lmk_get_console_log_handler();
-    TMK_ASSERT_NOT_NULL(clh);
-    lmk_set_handler_log_level(clh, LMK_LOG_LEVEL_TRACE);
+//    struct lmk_log_handler *clh = lmk_get_console_log_handler();
+//    TMK_ASSERT_NOT_NULL(clh);
+//    lmk_set_handler_log_level(clh, LMK_LOG_LEVEL_TRACE);
 
     lmk_set_log_level(logger1, LMK_LOG_LEVEL_TRACE);
     lmk_set_log_level(logger2, LMK_LOG_LEVEL_TRACE);
@@ -470,9 +451,8 @@ TMK_TEST(lmk_test_multiple_threads) {
     pthread_join(t3, NULL);
     pthread_join(t4, NULL);
 
-    TMK_ASSERT_EQUAL(1024 * 4, flh->nr_log_calls);
+    TMK_ASSERT_EQUAL(4*1024 , flh->nr_log_calls);
     lmk_destroy();
-
 }
 
 TMK_TEST(lmk_test_socket_log_handler) {
@@ -494,28 +474,28 @@ TMK_TEST(lmk_test_socket_log_handler) {
     LMK_LOG_DEBUG(logger, "This is an info log");
     LMK_LOG_WARN(logger, "This is a warn log");
     LMK_LOG_ERROR(logger, "This is an error log");
-    LMK_LOG_FATAL(logger, "This is a fatal log");
 
-    TMK_ASSERT_EQUAL(6, slh->nr_log_calls);
+    TMK_ASSERT_EQUAL(5, slh->nr_log_calls);
 
     lmk_destroy();
 }
 
 TMK_TEST_FUNCTION_TABLE_START(test_function_table)
-                TMK_INCLUDE_TEST(lmk_test_create_and_destroy_logger) TMK_INCLUDE_TEST(lmk_test_null_logger)
-                TMK_INCLUDE_TEST(lmk_test_null_logger_name)
-                TMK_INCLUDE_TEST(lmk_test_get_existing_logger)
-                TMK_INCLUDE_TEST(lmk_test_logger_log_levels)
-                TMK_INCLUDE_TEST(lmk_test_create_handlers)
-                TMK_INCLUDE_TEST(lmk_test_destroy_handlers)
-                TMK_INCLUDE_TEST(lmk_test_destroy_handler_with_logger_references)
-                TMK_INCLUDE_TEST(lmk_test_attach_handlers_to_multiple_loggers)
-                TMK_INCLUDE_TEST(lmk_test_attach_same_handler)
-                TMK_INCLUDE_TEST(lmk_test_destroy_logger)
-                TMK_INCLUDE_TEST(lmk_test_destroy_loggers)
-                TMK_INCLUDE_TEST(lmk_test_multiple_threads)
-                TMK_INCLUDE_TEST(lmk_test_console_log_handler)
-                TMK_INCLUDE_TEST(lmk_test_socket_log_handler)
+    TMK_INCLUDE_TEST(lmk_test_create_and_destroy_logger)
+    TMK_INCLUDE_TEST(lmk_test_null_logger)
+    TMK_INCLUDE_TEST(lmk_test_null_logger_name)
+    TMK_INCLUDE_TEST(lmk_test_get_existing_logger)
+    TMK_INCLUDE_TEST(lmk_test_logger_log_levels)
+    TMK_INCLUDE_TEST(lmk_test_create_handlers)
+    TMK_INCLUDE_TEST(lmk_test_destroy_handlers)
+    TMK_INCLUDE_TEST(lmk_test_destroy_handler_with_logger_references)
+    TMK_INCLUDE_TEST(lmk_test_attach_handlers_to_multiple_loggers)
+    TMK_INCLUDE_TEST(lmk_test_attach_same_handler)
+    TMK_INCLUDE_TEST(lmk_test_destroy_logger)
+    TMK_INCLUDE_TEST(lmk_test_destroy_loggers)
+    TMK_INCLUDE_TEST(lmk_test_multiple_threads)
+    TMK_INCLUDE_TEST(lmk_test_console_log_handler)
+    TMK_INCLUDE_TEST(lmk_test_socket_log_handler)
 TMK_TEST_FUNCTION_TABLE_END
 
 void tmk_setup() {
