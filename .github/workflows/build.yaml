@@ -12,7 +12,7 @@ env:
 jobs:
   build:
     name: build (${{ matrix.distro }})
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.runs-on }}
     container: ${{ matrix.container }}
 
     strategy:
@@ -20,14 +20,21 @@ jobs:
       matrix:
         include:
           - distro: ubuntu-24.04
+            runs-on: ubuntu-latest
             container: ubuntu:24.04
             install: apt-get update && apt-get install -y gcc make autoconf automake libtool
           - distro: alpine-3.21
+            runs-on: ubuntu-latest
             container: alpine:3.21
             install: apk add --no-cache bash gcc musl-dev make autoconf automake libtool
           - distro: fedora-41
+            runs-on: ubuntu-latest
             container: fedora:41
             install: dnf install -y gcc make autoconf automake libtool
+          - distro: macos-14
+            runs-on: macos-14
+            container: ""
+            install: brew install autoconf automake libtool
 
     steps:
       - uses: actions/checkout@v4
