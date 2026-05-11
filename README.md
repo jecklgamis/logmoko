@@ -190,5 +190,22 @@ Backup files are named `app.log.1`, `app.log.2`, …, `app.log.N`.
 
 See the [Logmoko User Guide](docs/logmoko-user-guide.md) for more details.
 
+### Performance
+
+Logmoko is designed so that log calls never block the application. Each handler runs a dedicated background thread that drains a ring buffer and performs all I/O, so the caller's cost is bounded to a mutex lock, a `strncpy` into the ring buffer slot, a condition signal, and an unlock.
+
+Benchmarked on Apple M-series (100,000 INFO logs to a file handler, `-O2`):
+
+| Scenario | Time | Throughput |
+|---|---|---|
+| Enqueue latency (caller-side only) | ~7 ms | ~14M enqueue attempts/sec |
+| Full throughput — all logs written and flushed to disk | ~66 ms | ~1.5M logs/sec |
+
+**Design tradeoffs:**
+
+- The ring buffer size (default 256, configurable via `ring_buffer_size`) determines how much burst can be absorbed. Logs that arrive when the buffer is full are silently dropped rather than blocking the caller.
+- The file handler flushes once per drained batch rather than per line, which is the primary reason write throughput is high under load.
+- For workloads where drop-free delivery matters more than enqueue latency, increase `ring_buffer_size` to match the expected burst size.
+
 ### Contributing
 Please see `CONTRIBUTING.md`
