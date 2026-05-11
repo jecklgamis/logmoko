@@ -177,7 +177,30 @@ enqueue cost is nearly message-size-independent, but the backend serialization s
 time. The result: logmoko has the smallest long-vs-short gap because its bottleneck is the
 formatting step, not I/O.
 
+**Drop behavior — 100K short-message burst:**
+
+| Library | ring=256 | ring=1024 | ring=8192 | avg ns/call |
+|---|---|---|---|---|
+| logmoko | 63.5% dropped | 59.1% dropped | 55.4% dropped | ~81 ns |
+| spdlog | 75.5% dropped | 75.3% dropped | 54.6% dropped | ~120 ns |
+| quill | n/a (no counter) | n/a | n/a | ~4 ns |
+| fmtlog | n/a (no counter) | n/a | n/a | ~16 ns |
+
+quill and fmtlog enqueue in nanoseconds because they defer formatting to the background thread — the producer is unlikely to overflow the ring at all. logmoko and spdlog format on the producer thread, so a tight burst outpaces the consumer. To avoid drops, size the ring to absorb the burst peak or rate-limit producers.
+
 **Drop-free threshold (ring=8192):** zero drops up to ~1M logs/sec; drops begin at ~1.5M logs/sec.
+
+**Memory footprint — 1 file handler, ring=1024:**
+
+| Library | Delta | Notes |
+|---|---|---|
+| logmoko | +2.2 MB | pre-allocates 2 KB × ring_sz slots at init |
+| fmtlog | +0.7 MB | per-thread queues allocated on first log |
+| spdlog | +0.5 MB | |
+| quill | +0.3 MB | |
+| g3log | +0.1 MB | |
+
+logmoko's memory cost is predictable and scales linearly: `ring_buffer_size × 2 KB` per handler. At the default ring=1024 that is 2 MB; at ring=8192 it is 16 MB.
 
 **Choosing a ring buffer size:**
 

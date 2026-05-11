@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <pthread.h>
+#include <mach/mach.h>
 
 #include "../src/main/logmoko.h"
 
@@ -274,4 +275,72 @@ void bench_logmoko_filtered(int nr_calls) {
 
     printf("logmoko  filtered: %5.2f ns/call  (%dM calls in %.1fms)\n",
            elapsed * 1e9 / nr_calls, nr_calls / 1000000, elapsed * 1000);
+}
+
+/* ------------------------------------------------------------------ */
+/* drop behavior under overload                                          */
+/* ------------------------------------------------------------------ */
+
+void bench_logmoko_drop(int ring_sz, int nr_logs) {
+    lmk_init();
+    lmk_get_config()->ring_buffer_size = (unsigned int)ring_sz;
+    struct lmk_logger      *logger = lmk_get_logger("bench");
+    struct lmk_log_handler *fh     = lmk_get_file_log_handler("fh", "bench_logmoko_drop.log");
+    lmk_attach_log_handler(logger, fh);
+    lmk_set_log_level(logger, LMK_LOG_LEVEL_INFO);
+
+    /* warm up the handler thread */
+    LMK_LOG_INFO(logger, "warmup");
+
+    double t0 = lmk_bench_now_sec();
+    for (int i = 0; i < nr_logs; i++)
+        LMK_LOG_INFO(logger, MSG_SHORT);
+    double enqueue_sec = lmk_bench_now_sec() - t0;
+
+    /* read drop counter before destroy flushes it to stderr */
+    struct lmk_file_log_handler *flh =
+        (struct lmk_file_log_handler *)fh;
+    unsigned long dropped = atomic_load_explicit(&flh->dropped, memory_order_relaxed);
+
+    lmk_destroy();
+    remove("bench_logmoko_drop.log");
+
+    double drop_pct = 100.0 * (double)dropped / nr_logs;
+    printf("logmoko  ring=%-5d  %d sent  %lu dropped (%4.1f%%)  avg %4.1f ns/call\n",
+           ring_sz, nr_logs, dropped, drop_pct,
+           enqueue_sec * 1e9 / nr_logs);
+}
+
+/* ------------------------------------------------------------------ */
+/* memory footprint                                                     */
+/* ------------------------------------------------------------------ */
+
+static size_t lmk_phys_mem(void) {
+    task_vm_info_data_t info;
+    mach_msg_type_number_t count = TASK_VM_INFO_COUNT;
+    if (task_info(mach_task_self(), TASK_VM_INFO,
+                  (task_info_t)&info, &count) == KERN_SUCCESS)
+        return (size_t)info.phys_footprint;
+    return 0;
+}
+
+void bench_logmoko_memory(int ring_sz) {
+    size_t before = lmk_phys_mem();
+
+    lmk_init();
+    lmk_get_config()->ring_buffer_size = (unsigned int)ring_sz;
+    struct lmk_logger      *logger = lmk_get_logger("bench");
+    struct lmk_log_handler *fh     = lmk_get_file_log_handler("fh", "bench_logmoko_mem.log");
+    lmk_attach_log_handler(logger, fh);
+    lmk_set_log_level(logger, LMK_LOG_LEVEL_INFO);
+    LMK_LOG_INFO(logger, "touch"); /* ensure thread stack is committed */
+
+    size_t after = lmk_phys_mem();
+    lmk_destroy();
+    remove("bench_logmoko_mem.log");
+
+    long delta = (long)after - (long)before;
+    printf("logmoko  ring=%-5d  %+.1f MB  (before=%zuMB after=%zuMB)\n",
+           ring_sz, delta / 1048576.0,
+           before / 1048576, after / 1048576);
 }

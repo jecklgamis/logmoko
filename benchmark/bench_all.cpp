@@ -525,6 +525,159 @@ static void bench_log4c_once(int nr_logs) {
 }
 
 /* ------------------------------------------------------------------ */
+/* memory footprint helper (macOS)                                      */
+/* ------------------------------------------------------------------ */
+
+#include <mach/mach.h>
+
+static size_t phys_mem() {
+    task_vm_info_data_t info;
+    mach_msg_type_number_t count = TASK_VM_INFO_COUNT;
+    if (task_info(mach_task_self(), TASK_VM_INFO,
+                  (task_info_t)&info, &count) == KERN_SUCCESS)
+        return (size_t)info.phys_footprint;
+    return 0;
+}
+
+/* ------------------------------------------------------------------ */
+/* drop behavior under overload                                         */
+/* ------------------------------------------------------------------ */
+
+static void bench_spdlog_drop(int ring_sz, int nr_logs) {
+    auto logger = make_spdlog("bench_spdlog_drop.log", ring_sz,
+                              spdlog::async_overflow_policy::discard_new);
+    auto tp = spdlog::thread_pool();
+    logger->info("warmup");
+
+    double t0 = now_sec();
+    for (int i = 0; i < nr_logs; i++)
+        logger->info(MSG_SHORT);
+    double enqueue_sec = now_sec() - t0;
+    size_t dropped = tp->discard_counter();
+
+    spdlog::shutdown();
+    remove("bench_spdlog_drop.log");
+
+    double drop_pct = 100.0 * (double)dropped / nr_logs;
+    printf("spdlog   ring=%-5d  %d sent  %zu dropped (%4.1f%%)  avg %4.1f ns/call\n",
+           ring_sz, nr_logs, dropped, drop_pct, enqueue_sec * 1e9 / nr_logs);
+}
+
+static void bench_quill_drop(int ring_sz, int nr_logs) {
+    quill::BackendOptions bo;
+    quill::Backend::start(bo);
+    auto sink = quill::Frontend::create_or_get_sink<quill::FileSink>(
+        "bench_quill_drop.log",
+        []() { quill::FileSinkConfig c; c.set_open_mode('w'); return c; }(),
+        quill::FileEventNotifier{});
+    auto *logger = quill::Frontend::create_or_get_logger(
+        "bench_drop", std::move(sink), quill::PatternFormatterOptions{"%(message)"});
+    logger->set_log_level(quill::LogLevel::Info);
+    LOG_INFO(logger, "warmup");
+
+    double t0 = now_sec();
+    for (int i = 0; i < nr_logs; i++)
+        LOG_INFO(logger, MSG_SHORT);
+    double enqueue_sec = now_sec() - t0;
+
+    quill::Backend::stop();
+    remove("bench_quill_drop.log");
+
+    /* quill doesn't expose a drop counter; report call time only */
+    printf("quill    ring=%-5d  %d sent  drops=n/a              avg %4.1f ns/call\n",
+           ring_sz, nr_logs, enqueue_sec * 1e9 / nr_logs);
+}
+
+static void bench_fmtlog_drop(int ring_sz, int nr_logs) {
+    (void)ring_sz; /* fmtlog ring size not directly settable at runtime */
+    fmtlog::setLogFile("bench_fmtlog_drop.log", true);
+    fmtlog::setLogLevel(fmtlog::INF);
+    fmtlog::startPollingThread(1000000);
+    logi("warmup");
+
+    double t0 = now_sec();
+    for (int i = 0; i < nr_logs; i++)
+        logi(MSG_SHORT);
+    double enqueue_sec = now_sec() - t0;
+
+    fmtlog::stopPollingThread();
+    fmtlog::poll(true);
+    remove("bench_fmtlog_drop.log");
+
+    printf("fmtlog   ring=n/a    %d sent  drops=n/a              avg %4.1f ns/call\n",
+           nr_logs, enqueue_sec * 1e9 / nr_logs);
+}
+
+/* ------------------------------------------------------------------ */
+/* memory footprint                                                     */
+/* ------------------------------------------------------------------ */
+
+static void bench_spdlog_memory(int ring_sz) {
+    size_t before = phys_mem();
+    spdlog::init_thread_pool((size_t)ring_sz, 1);
+    auto sink   = std::make_shared<spdlog::sinks::basic_file_sink_mt>("bench_spdlog_mem.log", true);
+    auto logger = std::make_shared<spdlog::async_logger>(
+        "bench_mem", sink, spdlog::thread_pool(),
+        spdlog::async_overflow_policy::discard_new);
+    logger->info("touch");
+    size_t after = phys_mem();
+    spdlog::shutdown();
+    remove("bench_spdlog_mem.log");
+    long delta = (long)after - (long)before;
+    printf("spdlog   ring=%-5d  %+.1f MB  (before=%zuMB after=%zuMB)\n",
+           ring_sz, delta / 1048576.0, before / 1048576, after / 1048576);
+}
+
+static void bench_quill_memory(int ring_sz) {
+    size_t before = phys_mem();
+    quill::BackendOptions bo;
+    quill::Backend::start(bo);
+    auto sink = quill::Frontend::create_or_get_sink<quill::FileSink>(
+        "bench_quill_mem.log",
+        []() { quill::FileSinkConfig c; c.set_open_mode('w'); return c; }(),
+        quill::FileEventNotifier{});
+    auto *logger = quill::Frontend::create_or_get_logger(
+        "bench_mem", std::move(sink), quill::PatternFormatterOptions{"%(message)"});
+    logger->set_log_level(quill::LogLevel::Info);
+    LOG_INFO(logger, "touch");
+    size_t after = phys_mem();
+    quill::Backend::stop();
+    remove("bench_quill_mem.log");
+    long delta = (long)after - (long)before;
+    printf("quill    ring=%-5d  %+.1f MB  (before=%zuMB after=%zuMB)\n",
+           ring_sz, delta / 1048576.0, before / 1048576, after / 1048576);
+}
+
+static void bench_fmtlog_memory() {
+    size_t before = phys_mem();
+    fmtlog::setLogFile("bench_fmtlog_mem.log", true);
+    fmtlog::setLogLevel(fmtlog::INF);
+    fmtlog::startPollingThread(1000000);
+    logi("touch");
+    size_t after = phys_mem();
+    fmtlog::stopPollingThread();
+    fmtlog::poll(true);
+    remove("bench_fmtlog_mem.log");
+    long delta = (long)after - (long)before;
+    printf("fmtlog   ring=n/a    %+.1f MB  (before=%zuMB after=%zuMB)\n",
+           delta / 1048576.0, before / 1048576, after / 1048576);
+}
+
+static void bench_g3log_memory() {
+    size_t before = phys_mem();
+    auto logworker = g3::LogWorker::createLogWorker();
+    logworker->addDefaultLogger("bench_g3log_mem", "./");
+    g3::initializeLogging(logworker.get());
+    LOGF(INFO, "touch");
+    size_t after = phys_mem();
+    logworker.reset();
+    system("rm -f bench_g3log_mem*.log 2>/dev/null");
+    long delta = (long)after - (long)before;
+    printf("g3log    ring=n/a    %+.1f MB  (before=%zuMB after=%zuMB)\n",
+           delta / 1048576.0, before / 1048576, after / 1048576);
+}
+
+/* ------------------------------------------------------------------ */
 /* filtered call overhead                                               */
 /* ------------------------------------------------------------------ */
 
@@ -933,6 +1086,15 @@ static void bench_g3log_mt(int nr_threads, int nr_logs) {
 /* ------------------------------------------------------------------ */
 
 int main() {
+    /* ---- memory footprint (run first on a fresh process) ---- */
+    printf("=== Memory footprint — 1 file handler, ring=1024 ===\n\n");
+    bench_logmoko_memory(1024);
+    bench_spdlog_memory(1024);
+    bench_quill_memory(1024);
+    bench_fmtlog_memory();
+    bench_g3log_memory();
+    printf("\n");
+
     /* ---- enqueue latency ---- */
     printf("=== %d logs — enqueue latency (async ring=%d, drops expected) ===\n\n",
            NR_LOGS, LMK_RING_SZ);
@@ -1057,6 +1219,19 @@ int main() {
     for (int tc : thread_counts) bench_fmtlog_mt(tc, mt_logs);
     printf("\n");
     for (int tc : thread_counts) bench_g3log_mt(tc, mt_logs);
+    printf("\n");
+
+    /* ---- drop behavior under overload ---- */
+    int drop_logs = 100000;
+    int drop_rings[] = {256, 1024, 8192};
+    printf("=== Drop behavior — %d logs burst, varying ring sizes ===\n\n", drop_logs);
+    for (int rs : drop_rings) bench_logmoko_drop(rs, drop_logs);
+    printf("\n");
+    for (int rs : drop_rings) bench_spdlog_drop(rs, drop_logs);
+    printf("\n");
+    bench_quill_drop(1024, drop_logs);
+    printf("\n");
+    bench_fmtlog_drop(1024, drop_logs);
     printf("\n");
 
     return 0;

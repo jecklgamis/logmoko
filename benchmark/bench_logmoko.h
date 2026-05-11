@@ -8,5 +8,7 @@ void bench_logmoko_mt(int nr_threads, int nr_logs);
 void bench_logmoko_latency(int nr_logs);
 void bench_logmoko_short(int run, int nr_logs);
 void bench_logmoko_filtered(int nr_calls);
+void bench_logmoko_drop(int ring_sz, int nr_logs);
+void bench_logmoko_memory(int ring_sz);
 
 #endif /* BENCH_LOGMOKO_H */
