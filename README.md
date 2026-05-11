@@ -2,8 +2,13 @@
 
 [![build](https://github.com/jecklgamis/logmoko/actions/workflows/build.yaml/badge.svg)](https://github.com/jecklgamis/logmoko/actions/workflows/build.yaml)
 
-Logmoko is a logging framework for C. It supports multiple log levels, named loggers, pluggable handlers,
-asynchronous I/O, log rotation, syslog, and INI-based configuration.
+Logmoko is a fast, lightweight async logging framework for C. It supports multiple log levels, named
+loggers, pluggable handlers, asynchronous I/O, log rotation, syslog, and INI-based configuration.
+
+Log calls never block — each handler runs a background thread draining a ring buffer, so the caller's
+cost is bounded to a CAS, a memcpy into the ring slot, and a conditional wakeup signal. Logmoko is
+fast enough for the vast majority of production workloads (zero drops up to ~1M logs/sec on Apple
+Silicon) without being a dedicated high-performance logger in the class of spdlog or NanoLog.
 
 Tested on:
 
