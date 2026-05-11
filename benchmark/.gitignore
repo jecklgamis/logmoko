@@ -1,0 +1,8 @@
+# compiled binaries
+bench
+bench_ringbuf
+bench_spdlog
+
+# generated log files
+*.log.*
+*.log
