@@ -74,7 +74,7 @@ LMK_API struct lmk_log_handler *lmk_get_file_log_handler(const char *name, const
                                       lmk_file_log_handler_init, lmk_file_log_handler_destroy,
                                       lmk_file_log_handler_log_impl, name);
             flh->log_fp = NULL;
-            flh->filename = filename;
+            flh->filename = filename ? lmk_strdup(filename) : NULL;
             lmk_insert_list(&g_lmk_handler_list, &flh->base.link);
             flh->base.init(&flh->base, NULL);
             flh->base.initialized = 1;

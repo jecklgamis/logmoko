@@ -11,6 +11,7 @@ liblogmoko_a_SOURCES = \
     logmoko_socket_log_handler.c \
     logmoko_time.c \
     logmoko_config.c \
+    logmoko_config_file.c \
     logmoko_list.c \
     logmoko_mem.c \
     logmoko_connector.c

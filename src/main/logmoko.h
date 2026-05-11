@@ -16,7 +16,7 @@
 #include "logmoko_connector.h"
 #include "logmoko_mem.h"
 
-#define LMK_DEBUG 0
+#define LMK_DEBUG 1
 
 #define LMK_VERSION_STRING "2.0.0-rcX"
 
@@ -180,6 +180,8 @@ LMK_API void lmk_log_warn(struct lmk_logger *logger, const char *file_name, cons
     (level >=LMK_LOG_LEVEL_TRACE && level <= LMK_LOG_LEVEL_OFF)
 
 extern LMK_API void lmk_init();
+
+extern LMK_API int lmk_init_from_file(const char *path);
 
 extern LMK_API void lmk_destroy();
 

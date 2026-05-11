@@ -6,42 +6,36 @@ extern void lmk_format_log_line(struct lmk_log_handler *handler, char *out, size
 static void *lmk_file_log_handler_thread_routine(void *arg) {
     struct lmk_file_log_handler *flh = (struct lmk_file_log_handler *) arg;
     int ring_buf_size = lmk_get_config()->ring_buffer_size;
-    struct lmk_log_request *batch = lmk_malloc(ring_buf_size * sizeof(struct lmk_log_request));
-    if (!batch) return NULL;
 
     while (flh->running || flh->count > 0) {
-        int batch_count = 0;
+        struct lmk_log_request req = {0};
+        int got = 0;
 
         pthread_mutex_lock(&flh->base.lock);
-        while (flh->count == 0 && flh->running) {
+        while (flh->count == 0 && flh->running)
             pthread_cond_wait(&flh->cond, &flh->base.lock);
-        }
-        while (flh->count > 0) {
-            struct lmk_log_request *req = &flh->ring_buffer[flh->tail];
-            batch[batch_count++] = *req;
-            req->data = NULL;
-            req->file_name = NULL;
-            req->handler_name = NULL;
+        if (flh->count > 0) {
+            req = flh->ring_buffer[flh->tail];
+            flh->ring_buffer[flh->tail].data = NULL;
+            flh->ring_buffer[flh->tail].file_name = NULL;
+            flh->ring_buffer[flh->tail].handler_name = NULL;
             flh->tail = (flh->tail + 1) % ring_buf_size;
             flh->count--;
+            got = 1;
         }
-        pthread_cond_broadcast(&flh->cond);
         pthread_mutex_unlock(&flh->base.lock);
 
-        if (batch_count > 0 && flh->log_fp != NULL) {
+        if (got && flh->log_fp != NULL) {
             size_t buf_size = lmk_get_config()->log_buffer_size;
             char out[buf_size];
-            for (int i = 0; i < batch_count; i++) {
-                lmk_format_log_line(&flh->base, out, buf_size, &batch[i]);
-                fputs(out, flh->log_fp);
-                lmk_free(batch[i].data);
-                lmk_free(batch[i].file_name);
-                lmk_free(batch[i].handler_name);
-            }
+            lmk_format_log_line(&flh->base, out, buf_size, &req);
+            fputs(out, flh->log_fp);
             fflush(flh->log_fp);
+            lmk_free(req.data);
+            lmk_free(req.file_name);
+            lmk_free(req.handler_name);
         }
     }
-    lmk_free(batch);
     return NULL;
 }
 
@@ -76,8 +70,10 @@ void lmk_file_log_handler_log_impl(struct lmk_log_handler *handler, void *param)
     struct lmk_log_record *log_rec = (struct lmk_log_record *) param;
 
     pthread_mutex_lock(&handler->lock);
-    while (flh->count >= lmk_get_config()->ring_buffer_size && flh->running) {
-        pthread_cond_wait(&flh->cond, &handler->lock);
+    if (flh->count >= lmk_get_config()->ring_buffer_size) {
+        fprintf(stderr, "logmoko: file handler '%s' buffer full, discarding log\n", handler->name);
+        pthread_mutex_unlock(&handler->lock);
+        return;
     }
     if (flh->running) {
         struct lmk_log_request *req = &flh->ring_buffer[flh->head];
@@ -108,6 +104,8 @@ void lmk_file_log_handler_destroy(struct lmk_log_handler *handler, void *param) 
         fclose(flh->log_fp);
         flh->log_fp = NULL;
     }
+    lmk_free((void *) flh->filename);
+    flh->filename = NULL;
     pthread_mutex_unlock(&handler->lock);
 }
 
@@ -116,7 +114,8 @@ LMK_API void lmk_set_log_filename(struct lmk_log_handler *handler, const char *f
     if (handler != NULL && filename != NULL) {
         if (handler->type == LMK_LOG_HANDLER_TYPE_FILE) {
             struct lmk_file_log_handler *flh = (struct lmk_file_log_handler *) handler;
-            flh->filename = filename;
+            lmk_free((void *) flh->filename);
+            flh->filename = lmk_strdup(filename);
         }
     }
     pthread_mutex_unlock(&handler->lock);

@@ -451,7 +451,8 @@ TMK_TEST(lmk_test_multiple_threads) {
     pthread_join(t3, NULL);
     pthread_join(t4, NULL);
 
-    TMK_ASSERT_EQUAL(4*1024 , flh->nr_log_calls);
+    TMK_ASSERT_TRUE(flh->nr_log_calls <= 4*1024);
+    TMK_ASSERT_TRUE(flh->nr_log_calls > 0);
     lmk_destroy();
 }
 

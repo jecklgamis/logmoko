@@ -10,7 +10,9 @@ const char *lmk_get_log_level_str(int log_level);
 
 extern const char *lmk_get_log_handler_type_str(int type);
 
-extern struct lmk_config *lmk_load_config();
+extern struct lmk_config *lmk_create_config();
+
+extern void lmk_apply_auto_config();
 
 struct lmk_config *lmk_get_config() {
     return g_lmk_config;
@@ -20,12 +22,13 @@ void lmk_init() {
     if (!g_lmk_initialized) {
         lmk_init_list(&g_lmk_logger_list);
         lmk_init_list(&g_lmk_handler_list);
-        g_lmk_config = lmk_load_config();
+        g_lmk_config = lmk_create_config();
         if (!g_lmk_config) {
             fprintf(stderr, "Unable to initialize\n");
             return;
         }
         g_lmk_initialized = 1;
+        lmk_apply_auto_config();
     }
 }
 
@@ -89,7 +92,7 @@ LMK_API void lmk_dump_loggers() {
 #define LEVEL_3_SEPARATOR "            "
 
     if (g_lmk_initialized) {
-        fprintf(stdout, "[Logmoko Database Dump Begin]\n");
+        fprintf(stdout, "[Logmoko Dump Begin]\n");
         if (!lmk_is_list_empty(&g_lmk_handler_list)) {
             fprintf(stdout, "%s+-[Log Handlers]\n", LEVEL_1_SEPARATOR);
             LMK_FOR_EACH_ENTRY(&g_lmk_handler_list, cursor) {
@@ -99,8 +102,22 @@ LMK_API void lmk_dump_loggers() {
                         handler->name,
                         lmk_get_log_handler_type_str(handler->type),
                         lmk_get_log_level_str(handler->log_level),
-                        handler->nr_logger_ref
-                );
+                        handler->nr_logger_ref);
+                if (handler->type == LMK_LOG_HANDLER_TYPE_FILE) {
+                    struct lmk_file_log_handler *flh = (struct lmk_file_log_handler *) handler;
+                    fprintf(stdout, "%s+-filename = %s\n", LEVEL_3_SEPARATOR,
+                            flh->filename ? flh->filename : "(none)");
+                } else if (handler->type == LMK_LOG_HANDLER_TYPE_SOCKET) {
+                    struct lmk_socket_log_handler *slh = (struct lmk_socket_log_handler *) handler;
+                    struct lmk_list *sc;
+                    LMK_FOR_EACH_ENTRY(&slh->log_server_list, sc) {
+                        struct lmk_log_server *ls = (struct lmk_log_server *) sc;
+                        char ip[INET_ADDRSTRLEN];
+                        inet_ntop(AF_INET, &ls->socket_addr.addr.sin_addr, ip, sizeof(ip));
+                        fprintf(stdout, "%s+-listener = %s:%d\n", LEVEL_3_SEPARATOR,
+                                ip, ntohs(ls->socket_addr.addr.sin_port));
+                    }
+                }
             }
         }
         if (!lmk_is_list_empty(&g_lmk_logger_list)) {
@@ -117,7 +134,7 @@ LMK_API void lmk_dump_loggers() {
                 }
             }
         }
-        fprintf(stdout, "[Logmoko Database Dump End]\n");
+        fprintf(stdout, "[Logmoko Dump End]\n");
     }
 }
 
