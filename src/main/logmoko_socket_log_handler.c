@@ -7,43 +7,36 @@ static void *lmk_socket_log_handler_thread_routine(void *arg) {
     struct lmk_socket_log_handler *slh = (struct lmk_socket_log_handler *) arg;
     int ring_buf_size = lmk_get_config()->ring_buffer_size;
 
-    while (slh->running || slh->count > 0) {
-        struct lmk_log_request req = {0};
-        int got = 0;
-
+    while (1) {
         pthread_mutex_lock(&slh->base.lock);
         while (slh->count == 0 && slh->running)
             pthread_cond_wait(&slh->cond, &slh->base.lock);
-        if (slh->count > 0) {
-            req = slh->ring_buffer[slh->tail];
-            slh->ring_buffer[slh->tail].data = NULL;
-            slh->ring_buffer[slh->tail].file_name = NULL;
-            slh->ring_buffer[slh->tail].handler_name = NULL;
-            slh->tail = (slh->tail + 1) % ring_buf_size;
-            slh->count--;
-            got = 1;
+        if (slh->count == 0) {
+            pthread_mutex_unlock(&slh->base.lock);
+            break;
         }
+        struct lmk_log_request *slot = &slh->ring_buffer[slh->tail];
         pthread_mutex_unlock(&slh->base.lock);
 
-        if (got) {
-            size_t buf_size = lmk_get_config()->log_buffer_size;
-            char out[buf_size];
-            lmk_format_log_line(&slh->base, out, buf_size, &req);
-            struct lmk_list *cursor;
-            LMK_FOR_EACH_ENTRY(&slh->log_server_list, cursor) {
-                struct lmk_log_server *log_server = (struct lmk_log_server *) cursor;
-                struct lmk_buffer buffer;
-                buffer.addr = (unsigned char *) out;
-                buffer.size = strlen(out);
-                struct lmk_udp_packet packet;
-                packet.buffer = &buffer;
-                packet.socket_addr = &log_server->socket_addr;
-                lmk_send_udp_packet(&slh->socket_object, &packet);
-            }
-            lmk_free(req.data);
-            lmk_free(req.file_name);
-            lmk_free(req.handler_name);
+        size_t buf_size = lmk_get_config()->log_buffer_size;
+        char out[buf_size];
+        lmk_format_log_line(&slh->base, out, buf_size, slot);
+        struct lmk_list *cursor;
+        LMK_FOR_EACH_ENTRY(&slh->log_server_list, cursor) {
+            struct lmk_log_server *log_server = (struct lmk_log_server *) cursor;
+            struct lmk_buffer buffer;
+            buffer.addr = (unsigned char *) out;
+            buffer.size = strlen(out);
+            struct lmk_udp_packet packet;
+            packet.buffer = &buffer;
+            packet.socket_addr = &log_server->socket_addr;
+            lmk_send_udp_packet(&slh->socket_object, &packet);
         }
+
+        pthread_mutex_lock(&slh->base.lock);
+        slh->tail = (slh->tail + 1) % ring_buf_size;
+        slh->count--;
+        pthread_mutex_unlock(&slh->base.lock);
     }
     return NULL;
 }
@@ -74,7 +67,6 @@ void lmk_socket_log_handler_log_impl(struct lmk_log_handler *handler, void *para
 
     pthread_mutex_lock(&handler->lock);
     if (slh->count >= lmk_get_config()->ring_buffer_size) {
-        fprintf(stderr, "logmoko: socket handler '%s' buffer full, discarding log\n", handler->name);
         pthread_mutex_unlock(&handler->lock);
         return;
     }
@@ -82,9 +74,10 @@ void lmk_socket_log_handler_log_impl(struct lmk_log_handler *handler, void *para
         struct lmk_log_request *req = &slh->ring_buffer[slh->head];
         req->log_level = log_rec->log_level;
         req->line_no = log_rec->line_no;
-        req->data = lmk_strdup(log_rec->data);
-        req->file_name = lmk_strdup(log_rec->file_name);
-        req->handler_name = lmk_strdup(handler->name);
+        strncpy(req->data, log_rec->data, LMK_LOG_MSG_MAX_SIZE - 1);
+        req->data[LMK_LOG_MSG_MAX_SIZE - 1] = '\0';
+        req->file_name = log_rec->file_name;
+        req->handler_name = handler->name;
         slh->head = (slh->head + 1) % lmk_get_config()->ring_buffer_size;
         slh->count++;
         handler->nr_log_calls++;

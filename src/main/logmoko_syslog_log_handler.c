@@ -30,33 +30,26 @@ static void *lmk_syslog_log_handler_thread_routine(void *arg) {
     struct lmk_syslog_log_handler *slh = (struct lmk_syslog_log_handler *) arg;
     int ring_buf_size = lmk_get_config()->ring_buffer_size;
 
-    while (slh->running || slh->count > 0) {
-        struct lmk_log_request req = {0};
-        int got = 0;
-
+    while (1) {
         pthread_mutex_lock(&slh->base.lock);
         while (slh->count == 0 && slh->running)
             pthread_cond_wait(&slh->cond, &slh->base.lock);
-        if (slh->count > 0) {
-            req = slh->ring_buffer[slh->tail];
-            slh->ring_buffer[slh->tail].data = NULL;
-            slh->ring_buffer[slh->tail].file_name = NULL;
-            slh->ring_buffer[slh->tail].handler_name = NULL;
-            slh->tail = (slh->tail + 1) % ring_buf_size;
-            slh->count--;
-            got = 1;
+        if (slh->count == 0) {
+            pthread_mutex_unlock(&slh->base.lock);
+            break;
         }
+        struct lmk_log_request *slot = &slh->ring_buffer[slh->tail];
         pthread_mutex_unlock(&slh->base.lock);
 
-        if (got) {
-            syslog(lmk_to_syslog_priority(req.log_level),
-                   "[%s] (%s:%d) %s",
-                   lmk_get_log_level_str(req.log_level),
-                   req.file_name, req.line_no, req.data);
-            lmk_free(req.data);
-            lmk_free(req.file_name);
-            lmk_free(req.handler_name);
-        }
+        syslog(lmk_to_syslog_priority(slot->log_level),
+               "[%s] (%s:%d) %s",
+               lmk_get_log_level_str(slot->log_level),
+               slot->file_name, slot->line_no, slot->data);
+
+        pthread_mutex_lock(&slh->base.lock);
+        slh->tail = (slh->tail + 1) % ring_buf_size;
+        slh->count--;
+        pthread_mutex_unlock(&slh->base.lock);
     }
     return NULL;
 }
@@ -94,7 +87,6 @@ void lmk_syslog_log_handler_log_impl(struct lmk_log_handler *handler, void *para
 
     pthread_mutex_lock(&handler->lock);
     if (slh->count >= lmk_get_config()->ring_buffer_size) {
-        fprintf(stderr, "logmoko: syslog handler '%s' buffer full, discarding log\n", handler->name);
         pthread_mutex_unlock(&handler->lock);
         return;
     }
@@ -102,9 +94,10 @@ void lmk_syslog_log_handler_log_impl(struct lmk_log_handler *handler, void *para
         struct lmk_log_request *req = &slh->ring_buffer[slh->head];
         req->log_level = log_rec->log_level;
         req->line_no   = log_rec->line_no;
-        req->data      = lmk_strdup(log_rec->data);
-        req->file_name = lmk_strdup(log_rec->file_name);
-        req->handler_name = lmk_strdup(handler->name);
+        strncpy(req->data, log_rec->data, LMK_LOG_MSG_MAX_SIZE - 1);
+        req->data[LMK_LOG_MSG_MAX_SIZE - 1] = '\0';
+        req->file_name = log_rec->file_name;
+        req->handler_name = handler->name;
         slh->head = (slh->head + 1) % lmk_get_config()->ring_buffer_size;
         slh->count++;
         handler->nr_log_calls++;

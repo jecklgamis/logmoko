@@ -187,7 +187,6 @@ LMK_API void lmk_log_trace(struct lmk_logger *logger, const char *file_name,
     lmk_init();
     if (logger != NULL && LMK_IS_LOG_ENABLED(logger, LMK_LOG_LEVEL_TRACE)) {
         pthread_mutex_lock(&logger->log_lock);
-        memset(logger->log_buff, 0, lmk_get_config()->log_buffer_size);
         va_start(ap, format);
         vsnprintf(logger->log_buff, lmk_get_config()->log_buffer_size, format, ap);
         va_end(ap);
@@ -203,7 +202,6 @@ LMK_API void lmk_log_info(struct lmk_logger *logger, const char *file_name,
     if (logger != NULL && LMK_IS_LOG_ENABLED(logger, LMK_LOG_LEVEL_INFO)) {
         pthread_mutex_lock(&logger->log_lock);
         va_list ap;
-        memset(logger->log_buff, 0, lmk_get_config()->log_buffer_size);
         va_start(ap, format);
         vsnprintf(logger->log_buff, lmk_get_config()->log_buffer_size, format, ap);
         va_end(ap);
@@ -219,7 +217,6 @@ LMK_API void lmk_log_debug(struct lmk_logger *logger, const char *file_name,
     lmk_init();
     if (logger != NULL && LMK_IS_LOG_ENABLED(logger, LMK_LOG_LEVEL_DEBUG)) {
         pthread_mutex_lock(&logger->log_lock);
-        memset(logger->log_buff, 0, lmk_get_config()->log_buffer_size);
         va_start(ap, format);
         vsnprintf(logger->log_buff, lmk_get_config()->log_buffer_size, format, ap);
         va_end(ap);
@@ -235,7 +232,6 @@ LMK_API void lmk_log_warn(struct lmk_logger *logger, const char *file_name,
     lmk_init();
     if (logger != NULL && LMK_IS_LOG_ENABLED(logger, LMK_LOG_LEVEL_WARN)) {
         pthread_mutex_lock(&logger->log_lock);
-        memset(logger->log_buff, 0, lmk_get_config()->log_buffer_size);
         va_start(ap, format);
         vsnprintf(logger->log_buff, lmk_get_config()->log_buffer_size, format, ap);
         va_end(ap);
@@ -251,7 +247,6 @@ LMK_API void lmk_log_error(struct lmk_logger *logger, const char *file_name,
     lmk_init();
     if (logger != NULL && LMK_IS_LOG_ENABLED(logger, LMK_LOG_LEVEL_ERROR)) {
         pthread_mutex_lock(&logger->log_lock);
-        memset(logger->log_buff, 0, lmk_get_config()->log_buffer_size);
         va_start(ap, format);
         vsnprintf(logger->log_buff, lmk_get_config()->log_buffer_size, format, ap);
         va_end(ap);

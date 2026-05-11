@@ -28,38 +28,37 @@ static void *lmk_file_log_handler_thread_routine(void *arg) {
     struct lmk_file_log_handler *flh = (struct lmk_file_log_handler *) arg;
     int ring_buf_size = lmk_get_config()->ring_buffer_size;
 
-    while (flh->running || flh->count > 0) {
-        struct lmk_log_request req = {0};
-        int got = 0;
-
+    while (1) {
         pthread_mutex_lock(&flh->base.lock);
         while (flh->count == 0 && flh->running)
             pthread_cond_wait(&flh->cond, &flh->base.lock);
-        if (flh->count > 0) {
-            req = flh->ring_buffer[flh->tail];
-            flh->ring_buffer[flh->tail].data = NULL;
-            flh->ring_buffer[flh->tail].file_name = NULL;
-            flh->ring_buffer[flh->tail].handler_name = NULL;
-            flh->tail = (flh->tail + 1) % ring_buf_size;
-            flh->count--;
-            got = 1;
+        if (flh->count == 0) {
+            pthread_mutex_unlock(&flh->base.lock);
+            break;
         }
+        int batch = flh->count;
+        int tail  = flh->tail;
         pthread_mutex_unlock(&flh->base.lock);
 
-        if (got && flh->log_fp != NULL) {
-            size_t buf_size = lmk_get_config()->log_buffer_size;
-            char out[buf_size];
-            lmk_format_log_line(&flh->base, out, buf_size, &req);
-            size_t len = strlen(out);
-            fputs(out, flh->log_fp);
-            fflush(flh->log_fp);
-            flh->current_file_size += (long) len;
-            if (flh->max_file_size > 0 && flh->current_file_size >= flh->max_file_size)
-                lmk_rotate_log_file(flh);
-            lmk_free(req.data);
-            lmk_free(req.file_name);
-            lmk_free(req.handler_name);
+        char out[LMK_LOG_MSG_MAX_SIZE];
+        for (int i = 0; i < batch; i++) {
+            struct lmk_log_request *slot = &flh->ring_buffer[(tail + i) % ring_buf_size];
+            if (flh->log_fp != NULL) {
+                lmk_format_log_line(&flh->base, out, sizeof(out), slot);
+                size_t len = strlen(out);
+                fputs(out, flh->log_fp);
+                flh->current_file_size += (long) len;
+                if (flh->max_file_size > 0 && flh->current_file_size >= flh->max_file_size)
+                    lmk_rotate_log_file(flh);
+            }
         }
+        if (flh->log_fp != NULL)
+            fflush(flh->log_fp);
+
+        pthread_mutex_lock(&flh->base.lock);
+        flh->tail = (tail + batch) % ring_buf_size;
+        flh->count -= batch;
+        pthread_mutex_unlock(&flh->base.lock);
     }
     return NULL;
 }
@@ -100,7 +99,6 @@ void lmk_file_log_handler_log_impl(struct lmk_log_handler *handler, void *param)
 
     pthread_mutex_lock(&handler->lock);
     if (flh->count >= lmk_get_config()->ring_buffer_size) {
-        fprintf(stderr, "logmoko: file handler '%s' buffer full, discarding log\n", handler->name);
         pthread_mutex_unlock(&handler->lock);
         return;
     }
@@ -108,9 +106,10 @@ void lmk_file_log_handler_log_impl(struct lmk_log_handler *handler, void *param)
         struct lmk_log_request *req = &flh->ring_buffer[flh->head];
         req->log_level = log_rec->log_level;
         req->line_no = log_rec->line_no;
-        req->data = lmk_strdup(log_rec->data);
-        req->file_name = lmk_strdup(log_rec->file_name);
-        req->handler_name = lmk_strdup(handler->name);
+        strncpy(req->data, log_rec->data, LMK_LOG_MSG_MAX_SIZE - 1);
+        req->data[LMK_LOG_MSG_MAX_SIZE - 1] = '\0';
+        req->file_name = log_rec->file_name;
+        req->handler_name = handler->name;
         flh->head = (flh->head + 1) % lmk_get_config()->ring_buffer_size;
         flh->count++;
         handler->nr_log_calls++;

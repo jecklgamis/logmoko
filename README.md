@@ -2,7 +2,7 @@
 
 ![build](https://github.com/jecklgamis/logmoko/actions/workflows/build.yaml/badge.svg)
 
-Logmoko is a minimal logging framework for C. It supports multiple log levels, named loggers, pluggable handlers,
+Logmoko is a logging framework for C. It supports multiple log levels, named loggers, pluggable handlers,
 asynchronous I/O, log rotation, syslog, and INI-based configuration.
 
 ### Features

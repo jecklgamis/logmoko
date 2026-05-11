@@ -79,12 +79,14 @@ struct lmk_log_handler {
 
 typedef void (*lmk_log_handler_function)(struct lmk_log_handler *, void *);
 
+#define LMK_LOG_MSG_MAX_SIZE 2048
+
 struct lmk_log_request {
     int log_level;
-    char *data;
+    char data[LMK_LOG_MSG_MAX_SIZE];
     int line_no;
     char *file_name;
-    char *handler_name; /* Added to support socket/file handler specific context if needed */
+    char *handler_name;
 };
 
 struct lmk_file_log_handler {
