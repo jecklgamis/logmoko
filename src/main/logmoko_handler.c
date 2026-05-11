@@ -160,6 +160,54 @@ static void lmk_default_format(char *out, size_t out_size,
              level_str, timestamp, file_name, line_no, handler_name, message);
 }
 
+static void lmk_simple_format(char *out, size_t out_size,
+                               int log_level, const char *level_str,
+                               const char *timestamp,
+                               const char *file_name, int line_no,
+                               const char *handler_name,
+                               const char *message) {
+    snprintf(out, out_size, "%s [%-5s] %s\n", timestamp, level_str, message);
+}
+
+static void lmk_json_escape(char *dst, size_t dst_size, const char *src) {
+    size_t i = 0;
+    while (*src && i + 2 < dst_size) {
+        if (*src == '"' || *src == '\\') {
+            dst[i++] = '\\';
+        } else if (*src == '\n') {
+            dst[i++] = '\\';
+            dst[i++] = 'n';
+            src++;
+            continue;
+        }
+        dst[i++] = *src++;
+    }
+    dst[i] = '\0';
+}
+
+static void lmk_json_format(char *out, size_t out_size,
+                              int log_level, const char *level_str,
+                              const char *timestamp,
+                              const char *file_name, int line_no,
+                              const char *handler_name,
+                              const char *message) {
+    char escaped[1024];
+    lmk_json_escape(escaped, sizeof(escaped), message);
+    snprintf(out, out_size,
+             "{\"timestamp\":\"%s\",\"level\":\"%s\",\"file\":\"%s\",\"line\":%d,\"handler\":\"%s\",\"message\":\"%s\"}\n",
+             timestamp, level_str, file_name, line_no, handler_name, escaped);
+}
+
+lmk_format_fn lmk_get_format_fn(const char *name) {
+    if (!name || !strcasecmp(name, "default"))
+        return NULL;
+    if (!strcasecmp(name, "simple"))
+        return lmk_simple_format;
+    if (!strcasecmp(name, "json"))
+        return lmk_json_format;
+    return NULL;
+}
+
 void lmk_format_log_line(struct lmk_log_handler *handler, char *out, size_t out_size,
                           const struct lmk_log_request *req) {
     const char *level_str = lmk_get_log_level_str(req->log_level);

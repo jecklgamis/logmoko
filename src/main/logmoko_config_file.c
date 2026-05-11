@@ -17,6 +17,7 @@ struct lmk_cfg_handler {
     int nr_listeners;
     long max_file_size;
     int  max_backup_files;
+    char format[32];
 };
 
 struct lmk_cfg_logger {
@@ -132,6 +133,8 @@ static int lmk_cfg_parse_file(const char *path, struct lmk_cfg *cfg) {
                 cur_handler->level = lmk_cfg_parse_level(val);
             } else if (!strcasecmp(key, "filename")) {
                 strncpy(cur_handler->filename, val, sizeof(cur_handler->filename) - 1);
+            } else if (!strcasecmp(key, "format")) {
+                strncpy(cur_handler->format, val, sizeof(cur_handler->format) - 1);
             } else if (!strcasecmp(key, "max_file_size")) {
                 cur_handler->max_file_size = atol(val);
             } else if (!strcasecmp(key, "max_backup_files")) {
@@ -201,6 +204,8 @@ static void lmk_cfg_apply(const struct lmk_cfg *cfg) {
         }
         if (handler && ch->level != -1)
             lmk_set_handler_log_level(handler, ch->level);
+        if (handler && ch->format[0])
+            lmk_set_log_format(handler, lmk_get_format_fn(ch->format));
     }
 
     for (int i = 0; i < cfg->nr_loggers; i++) {

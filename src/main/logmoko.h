@@ -215,6 +215,8 @@ extern LMK_API int lmk_destroy_log_handler(struct lmk_log_handler **handler_addr
 
 extern LMK_API void lmk_set_log_format(struct lmk_log_handler *handler, lmk_format_fn fn);
 
+extern lmk_format_fn lmk_get_format_fn(const char *name);
+
 extern LMK_API int lmk_get_nr_loggers();
 
 extern LMK_API int lmk_get_nr_handlers();
