@@ -64,6 +64,8 @@ LMK_API void lmk_destroy() {
         LMK_RESTORE_CURSOR(cursor)
     }
     g_lmk_initialized = 0;
+    lmk_free(g_lmk_config);
+    g_lmk_config = NULL;
 }
 
 struct lmk_logger *lmk_search_logger_by_name(const char *name) {

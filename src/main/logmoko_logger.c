@@ -205,15 +205,6 @@ LMK_API void lmk_log_error(struct lmk_logger *logger, const char *file_name,
     va_end(ap);
 }
 
-struct lmk_log_record *lmk_create_log_record() {
-    struct lmk_log_record *log_rec = NULL;
-    if ((log_rec = (struct lmk_log_record *)lmk_malloc(sizeof(struct lmk_log_record))) != NULL) {
-        memset(log_rec, 0, sizeof(struct lmk_log_record));
-        lmk_init_list(&log_rec->link);
-    }
-    return log_rec;
-}
-
 int lmk_log_impl(struct lmk_logger *logger, const char *file_name, int line_no,
                  int log_level, const char *data, size_t data_len) {
     struct lmk_list *cursor = NULL;

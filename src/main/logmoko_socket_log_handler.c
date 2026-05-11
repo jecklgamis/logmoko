@@ -130,9 +130,11 @@ void lmk_socket_log_handler_destroy(struct lmk_log_handler *handler, void *param
 
 LMK_API void lmk_attach_log_listener(struct lmk_log_handler *handler,
                                       const char *host, int port) {
+    if (!handler || !host || port <= 0 ||
+        handler->type != LMK_LOG_HANDLER_TYPE_SOCKET)
+        return;
     pthread_mutex_lock(&handler->lock);
-    if (handler && host && port > 0 &&
-        handler->type == LMK_LOG_HANDLER_TYPE_SOCKET) {
+    {
         struct lmk_socket_log_handler *slh = (struct lmk_socket_log_handler *)handler;
         struct lmk_log_server *log_server =
             (struct lmk_log_server *)lmk_malloc(sizeof(struct lmk_log_server));
