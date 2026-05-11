@@ -146,12 +146,15 @@ API:
 struct lmk_log_handler *lmk_get_console_log_handler();
 struct lmk_log_handler *lmk_get_file_log_handler(const char *name, const char *filename);
 struct lmk_log_handler *lmk_get_socket_log_handler(const char *name);
+struct lmk_log_handler *lmk_get_syslog_log_handler(const char *name, const char *ident, int facility);
 int  lmk_attach_log_handler(struct lmk_logger *logger, struct lmk_log_handler *handler);
 int  lmk_detach_log_handler(struct lmk_logger *logger, struct lmk_log_handler *handler);
 void lmk_attach_log_listener(struct lmk_log_handler *handler, const char *host, int port);
 void lmk_set_handler_log_level(struct lmk_log_handler *handler, int log_level);
 int  lmk_get_handler_log_level(struct lmk_log_handler *handler);
 ```
+
+All factory functions return `NULL` if `name` is NULL, if memory allocation fails, or if the background thread cannot be started. `lmk_get_file_log_handler` additionally returns `NULL` if `filename` is NULL — a filename is always required. Always check the return value before attaching a handler.
 
 #### Console log handler example:
 ```c
@@ -271,17 +274,19 @@ lmk_init_from_file("logmoko.conf");
 Config file format:
 ```ini
 [global]
-log_buffer_size  = 2048    ; per-log message buffer size in bytes
-ring_buffer_size = 256     ; async ring buffer depth per handler
+log_buffer_size  = 2048    ; per-log message buffer size in bytes (default: 2048)
+ring_buffer_size = 1024    ; async ring buffer depth per handler (default: 1024)
 
 [handler:<name>]
-type             = console | file | socket
+type             = console | file | socket | syslog
 level            = trace | debug | info | warn | error | off
 format           = default | simple | json
-filename         = <path>          ; file handlers only
+filename         = <path>          ; file handlers only (required)
 max_file_size    = <bytes>         ; file handlers only (default: 20971520)
 max_backup_files = <count>         ; file handlers only (default: 10)
 listener         = <host>:<port>   ; socket handlers, repeatable
+ident            = <string>        ; syslog handlers only
+facility         = user | daemon | local0..local7  ; syslog handlers only
 
 [logger:<name>]
 level    = trace | debug | info | warn | error | off
