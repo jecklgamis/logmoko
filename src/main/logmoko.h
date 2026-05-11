@@ -118,6 +118,7 @@ struct lmk_console_log_handler {
     pthread_t thread;
     int running;
     pthread_cond_t cond;
+    unsigned long dropped;
 };
 
 struct lmk_socket_log_handler {
@@ -131,6 +132,7 @@ struct lmk_socket_log_handler {
     pthread_t thread;
     int running;
     pthread_cond_t cond;
+    unsigned long dropped;
 };
 
 struct lmk_syslog_log_handler {
@@ -144,6 +146,7 @@ struct lmk_syslog_log_handler {
     pthread_t thread;
     int running;
     pthread_cond_t cond;
+    unsigned long dropped;
 };
 
 #define LMK_LOG_MAX_LOGGER_NAME_SZ 64

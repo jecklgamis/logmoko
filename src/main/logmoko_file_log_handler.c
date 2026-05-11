@@ -127,8 +127,10 @@ void lmk_file_log_handler_destroy(struct lmk_log_handler *handler, void *param) 
     pthread_mutex_unlock(&handler->lock);
     pthread_join(flh->thread, NULL);
     pthread_cond_destroy(&flh->cond);
+    lmk_free(flh->ring_buffer);
+    flh->ring_buffer = NULL;
 
-        if (flh->dropped)
+    if (flh->dropped)
         fprintf(stderr, "logmoko: file handler '%s' dropped %lu log(s), logged %lu\n",
                 handler->name, flh->dropped, handler->nr_log_calls);
 

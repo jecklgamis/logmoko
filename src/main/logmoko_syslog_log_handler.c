@@ -56,10 +56,12 @@ static void *lmk_syslog_log_handler_thread_routine(void *arg) {
 
 void lmk_syslog_log_handler_init(struct lmk_log_handler *handler, void *param) {
     struct lmk_syslog_log_handler *slh = (struct lmk_syslog_log_handler *) handler;
+    pthread_mutex_lock(&handler->lock);
     openlog(slh->ident[0] ? slh->ident : NULL, LOG_PID, slh->facility);
     slh->ring_buffer = lmk_malloc(sizeof(struct lmk_log_request) * lmk_get_config()->ring_buffer_size);
     if (!slh->ring_buffer) {
         fprintf(stderr, "Unable to allocate ring buffer\n");
+        pthread_mutex_unlock(&handler->lock);
         return;
     }
     slh->head = 0;
@@ -68,6 +70,7 @@ void lmk_syslog_log_handler_init(struct lmk_log_handler *handler, void *param) {
     slh->running = 1;
     pthread_cond_init(&slh->cond, NULL);
     pthread_create(&slh->thread, NULL, lmk_syslog_log_handler_thread_routine, slh);
+    pthread_mutex_unlock(&handler->lock);
 }
 
 void lmk_syslog_log_handler_destroy(struct lmk_log_handler *handler, void *param) {
@@ -78,6 +81,11 @@ void lmk_syslog_log_handler_destroy(struct lmk_log_handler *handler, void *param
     pthread_mutex_unlock(&slh->base.lock);
     pthread_join(slh->thread, NULL);
     pthread_cond_destroy(&slh->cond);
+    if (slh->dropped)
+        fprintf(stderr, "logmoko: syslog handler '%s' dropped %lu log(s), logged %lu\n",
+                handler->name, slh->dropped, handler->nr_log_calls);
+    lmk_free(slh->ring_buffer);
+    slh->ring_buffer = NULL;
     closelog();
 }
 
@@ -87,6 +95,7 @@ void lmk_syslog_log_handler_log_impl(struct lmk_log_handler *handler, void *para
 
     pthread_mutex_lock(&handler->lock);
     if (slh->count >= lmk_get_config()->ring_buffer_size) {
+        slh->dropped++;
         pthread_mutex_unlock(&handler->lock);
         return;
     }

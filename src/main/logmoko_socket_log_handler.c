@@ -67,6 +67,7 @@ void lmk_socket_log_handler_log_impl(struct lmk_log_handler *handler, void *para
 
     pthread_mutex_lock(&handler->lock);
     if (slh->count >= lmk_get_config()->ring_buffer_size) {
+        slh->dropped++;
         pthread_mutex_unlock(&handler->lock);
         return;
     }
@@ -95,6 +96,11 @@ void lmk_socket_log_handler_destroy(struct lmk_log_handler *handler, void *param
     pthread_mutex_unlock(&handler->lock);
     pthread_join(slh->thread, NULL);
     pthread_cond_destroy(&slh->cond);
+    if (slh->dropped)
+        fprintf(stderr, "logmoko: socket handler '%s' dropped %lu log(s), logged %lu\n",
+                handler->name, slh->dropped, handler->nr_log_calls);
+    lmk_free(slh->ring_buffer);
+    slh->ring_buffer = NULL;
 
     pthread_mutex_lock(&handler->lock);
     LMK_FOR_EACH_ENTRY(&slh->log_server_list, cursor) {

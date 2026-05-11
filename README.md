@@ -5,6 +5,18 @@
 Logmoko is a logging framework for C. It supports multiple log levels, named loggers, pluggable handlers,
 asynchronous I/O, log rotation, syslog, and INI-based configuration.
 
+### Contents
+
+- [Features](#features)
+- [Getting Started](#getting-started)
+- [Example App](#example-app)
+- [Config File Example](#config-file-example)
+- [Custom Log Format](#custom-log-format)
+- [Syslog Handler](#syslog-handler)
+- [Log Rotation](#log-rotation)
+- [Thread Safety](#thread-safety)
+- [Performance](#performance)
+
 ### Features
 
 - **Log levels**: TRACE, DEBUG, INFO, WARN, ERROR, OFF — configurable per logger and per handler
@@ -189,6 +201,26 @@ lmk_set_log_rotation(file, 50 * 1024 * 1024, 5);  /* 50 MB, keep 5 backups */
 Backup files are named `app.log.1`, `app.log.2`, …, `app.log.N`.
 
 See the [Logmoko User Guide](docs/logmoko-user-guide.md) for more details.
+
+### Thread Safety
+
+All public API functions are thread-safe. Multiple threads can call `LMK_LOG_*` concurrently on
+the same logger; each logger serialises access to its log buffer with a mutex. Handlers are
+protected by their own independent mutex, so multiple loggers can fan out to the same handler
+concurrently without data races.
+
+**What is safe to do concurrently:**
+- Logging via `LMK_LOG_*` on any logger from any number of threads.
+- Attaching and detaching handlers from different loggers simultaneously.
+
+**What must be done before spawning logging threads:**
+- Create loggers and attach handlers — the framework does not lock the logger or handler lists
+  during log calls, so structural changes (create/destroy logger or handler) should be done
+  before threads start logging.
+
+**Dropped logs:** each handler's ring buffer absorbs bursts; when full, the calling thread
+increments the handler's `dropped` counter and returns immediately rather than blocking. The
+dropped count is printed to stderr when the handler is destroyed.
 
 ### Performance
 

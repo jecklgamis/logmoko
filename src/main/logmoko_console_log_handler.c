@@ -75,6 +75,11 @@ void lmk_console_log_handler_destroy(struct lmk_log_handler *handler, void *para
     pthread_mutex_unlock(&clh->base.lock);
     pthread_join(clh->thread, NULL);
     pthread_cond_destroy(&clh->cond);
+    if (clh->dropped)
+        fprintf(stderr, "logmoko: console handler dropped %lu log(s), logged %lu\n",
+                clh->dropped, handler->nr_log_calls);
+    lmk_free(clh->ring_buffer);
+    clh->ring_buffer = NULL;
 }
 
 void lmk_console_log_handler_log_impl(struct lmk_log_handler *handler, void *param) {
@@ -83,6 +88,7 @@ void lmk_console_log_handler_log_impl(struct lmk_log_handler *handler, void *par
 
     pthread_mutex_lock(&handler->lock);
     if (clh->count >= lmk_get_config()->ring_buffer_size) {
+        clh->dropped++;
         pthread_mutex_unlock(&handler->lock);
         return;
     }
