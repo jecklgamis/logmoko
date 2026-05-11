@@ -130,6 +130,21 @@ logmoko throughput stays flat across thread counts — the MPMC ring buffer scal
 fmtlog uses per-thread queues and degrades under contention on a single consumer. spdlog, g3log,
 and quill show similar saturation at the single backend thread.
 
+**Filtered call overhead — 10M DEBUG calls, logger level INFO:**
+
+| Library | Cost |
+|---|---|
+| quill | ~0.25 ns/call |
+| fmtlog | ~0.27 ns/call |
+| g3log | ~0.94 ns/call |
+| spdlog | ~1.07 ns/call |
+| logmoko | ~1.54 ns/call |
+
+All libraries are well under 2 ns/call for a filtered log — safe to leave debug logging compiled
+in for production builds. quill and fmtlog achieve ~0.25 ns because their macros expand to a
+single branch on a thread-local level flag with no other work. logmoko's slightly higher cost
+comes from the additional `logger->log_level` check through a pointer indirection.
+
 **Per-call enqueue latency — 100K logs, ring=100K (no drops):**
 
 | Library | msg | p50 | p99 | p999 | max |

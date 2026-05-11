@@ -252,3 +252,26 @@ void bench_logmoko_short(int run, int nr_logs) {
     printf("logmoko short run %d: %7.3fms  (%d logs, ~%.0fK/sec)\n",
            run, elapsed * 1000, nr_logs, nr_logs / elapsed / 1000.0);
 }
+
+/* ------------------------------------------------------------------ */
+/* filtered call overhead (DEBUG call, logger level INFO)               */
+/* ------------------------------------------------------------------ */
+
+void bench_logmoko_filtered(int nr_calls) {
+    lmk_init();
+    struct lmk_logger     *logger = lmk_get_logger("bench");
+    struct lmk_log_handler *fh    = lmk_get_file_log_handler("fh", "bench_logmoko_filt.log");
+    lmk_attach_log_handler(logger, fh);
+    lmk_set_log_level(logger, LMK_LOG_LEVEL_INFO); /* DEBUG calls filtered here */
+
+    double t0 = lmk_bench_now_sec();
+    for (int i = 0; i < nr_calls; i++)
+        LMK_LOG_DEBUG(logger, MSG_SHORT);
+    double elapsed = lmk_bench_now_sec() - t0;
+
+    lmk_destroy();
+    remove("bench_logmoko_filt.log");
+
+    printf("logmoko  filtered: %5.2f ns/call  (%dM calls in %.1fms)\n",
+           elapsed * 1e9 / nr_calls, nr_calls / 1000000, elapsed * 1000);
+}

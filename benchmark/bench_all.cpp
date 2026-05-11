@@ -525,6 +525,88 @@ static void bench_log4c_once(int nr_logs) {
 }
 
 /* ------------------------------------------------------------------ */
+/* filtered call overhead                                               */
+/* ------------------------------------------------------------------ */
+
+static void bench_spdlog_filtered(int nr_calls) {
+    spdlog::init_thread_pool(1024, 1);
+    auto sink   = std::make_shared<spdlog::sinks::basic_file_sink_mt>("bench_spdlog_filt.log", true);
+    auto logger = std::make_shared<spdlog::async_logger>(
+        "bench_filt", sink, spdlog::thread_pool(),
+        spdlog::async_overflow_policy::discard_new);
+    logger->set_level(spdlog::level::info); /* debug calls filtered */
+
+    double t0 = now_sec();
+    for (int i = 0; i < nr_calls; i++)
+        logger->debug(MSG_SHORT);
+    double elapsed = now_sec() - t0;
+
+    spdlog::shutdown();
+    remove("bench_spdlog_filt.log");
+    printf("spdlog   filtered: %5.2f ns/call  (%dM calls in %.1fms)\n",
+           elapsed * 1e9 / nr_calls, nr_calls / 1000000, elapsed * 1000);
+}
+
+static void bench_quill_filtered(int nr_calls) {
+    quill::BackendOptions bo;
+    quill::Backend::start(bo);
+    auto sink = quill::Frontend::create_or_get_sink<quill::FileSink>(
+        "bench_quill_filt.log",
+        []() { quill::FileSinkConfig c; c.set_open_mode('w'); return c; }(),
+        quill::FileEventNotifier{});
+    auto *logger = quill::Frontend::create_or_get_logger(
+        "bench_filt", std::move(sink), quill::PatternFormatterOptions{"%(message)"});
+    logger->set_log_level(quill::LogLevel::Info); /* debug calls filtered */
+
+    double t0 = now_sec();
+    for (int i = 0; i < nr_calls; i++)
+        LOG_DEBUG(logger, MSG_SHORT);
+    double elapsed = now_sec() - t0;
+
+    quill::Backend::stop();
+    remove("bench_quill_filt.log");
+    printf("quill    filtered: %5.2f ns/call  (%dM calls in %.1fms)\n",
+           elapsed * 1e9 / nr_calls, nr_calls / 1000000, elapsed * 1000);
+}
+
+static void bench_fmtlog_filtered(int nr_calls) {
+    fmtlog::setLogFile("bench_fmtlog_filt.log", true);
+    fmtlog::setLogLevel(fmtlog::INF); /* debug calls filtered */
+    fmtlog::startPollingThread(1000000);
+
+    double t0 = now_sec();
+    for (int i = 0; i < nr_calls; i++)
+        logd(MSG_SHORT);
+    double elapsed = now_sec() - t0;
+
+    fmtlog::stopPollingThread();
+    fmtlog::poll(true);
+    remove("bench_fmtlog_filt.log");
+    printf("fmtlog   filtered: %5.2f ns/call  (%dM calls in %.1fms)\n",
+           elapsed * 1e9 / nr_calls, nr_calls / 1000000, elapsed * 1000);
+}
+
+static void bench_g3log_filtered(int nr_calls) {
+    auto logworker = g3::LogWorker::createLogWorker();
+    logworker->addDefaultLogger("bench_g3log_filt", "./");
+    g3::initializeLogging(logworker.get());
+
+    /* g3log has no simple runtime level setter; use a volatile guard to
+       simulate the "condition checked, not taken" path without the compiler
+       optimizing the call away entirely */
+    static volatile bool enabled = false;
+    double t0 = now_sec();
+    for (int i = 0; i < nr_calls; i++)
+        LOGF_IF(INFO, enabled, MSG_SHORT);
+    double elapsed = now_sec() - t0;
+
+    logworker.reset();
+    system("rm -f bench_g3log_filt*.log 2>/dev/null");
+    printf("g3log    filtered: %5.2f ns/call  (%dM calls in %.1fms, via volatile guard)\n",
+           elapsed * 1e9 / nr_calls, nr_calls / 1000000, elapsed * 1000);
+}
+
+/* ------------------------------------------------------------------ */
 /* latency + short-message helpers                                      */
 /* ------------------------------------------------------------------ */
 
@@ -909,6 +991,17 @@ int main() {
     for (int r = 1; r <= 3; r++) { printf("run %d: ", r); bench_syslog_rate_limited(rl_logs, RATE_LIMIT_RPS); }
     printf("\n");
     for (int r = 1; r <= 3; r++) { printf("run %d: ", r); bench_logc_rate_limited(rl_logs, RATE_LIMIT_RPS); }
+    printf("\n");
+
+    /* ---- filtered call overhead ---- */
+    int nr_filtered = 10000000; /* 10M calls */
+    printf("=== Filtered call overhead — %dM DEBUG calls, logger level INFO ===\n\n",
+           nr_filtered / 1000000);
+    bench_logmoko_filtered(nr_filtered);
+    bench_spdlog_filtered(nr_filtered);
+    bench_quill_filtered(nr_filtered);
+    bench_fmtlog_filtered(nr_filtered);
+    bench_g3log_filtered(nr_filtered);
     printf("\n");
 
     /* ---- per-call tail latency ---- */
