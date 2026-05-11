@@ -12,6 +12,7 @@ Tested on:
 | Ubuntu 24.04 | glibc |
 | Alpine 3.21 | musl |
 | Fedora 41 | glibc |
+| macOS 14 (Apple Silicon) | libSystem |
 
 ### Contents
 
