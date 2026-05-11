@@ -53,6 +53,22 @@ protection. Log data is transmitted in cleartext and can be intercepted or spoof
 networks. Do not use the socket handler over public or untrusted links without an external transport
 security layer (e.g., a VPN or WireGuard tunnel).
 
+**Source code statistics (versions benchmarked):**
+
+| Library | Version | Language | Files | LoC | Basis |
+|---|---|---|---|---|---|
+| logmoko | 2.0.0-rc10 | C | 19 | 2,219 | full source |
+| spdlog | 1.17.0 | C++ | 90 | 10,761 | distributed headers |
+| quill | 11.1.0 | C++ | 96 | 34,942 | distributed headers |
+| g3log | 2.6 | C++ | 19 | 1,588 | installed headers |
+| fmtlog | (vendored) | C++ | 2 | 1,459 | vendored headers (full) |
+| zlog | 1.2.18 | C | 1 | 288 | public header only |
+| log.c | 0.1.0 | C | 2 | 217 | vendored (full) |
+| log4c | 1.2.4 | C | 26 | 2,589 | installed headers |
+| syslog | — | C (POSIX) | — | — | OS built-in |
+
+*LoC counted from installed/vendored files only. Compiled libraries (g3log, zlog, log4c) have additional implementation source not reflected here.*
+
 ### Getting Started
 
 ```
