@@ -1,6 +1,6 @@
 #include "logmoko.h"
 
-int main() {
+int main(int argc, char *argv[]) {
     lmk_init();
 
     struct lmk_logger *logger = lmk_get_logger("socket-logger");
@@ -15,5 +15,5 @@ int main() {
     }
 
     lmk_destroy();
-    return 0;
+    return EXIT_SUCCESS;
 }

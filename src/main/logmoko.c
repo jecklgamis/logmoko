@@ -35,8 +35,6 @@ void lmk_init() {
         if (g_lmk_config->ring_buffer_size <= 0 ) {
             g_lmk_config->ring_buffer_size = LMK_CFG_DEFAULT_RING_BUFFER_SIZE;
         }
-        fprintf(stdout, "Using log_buffer_size = %d\n", g_lmk_config->log_buffer_size);
-        fprintf(stdout, "Using ring_buffer_size = %d\n", g_lmk_config->ring_buffer_size);
     }
 }
 
