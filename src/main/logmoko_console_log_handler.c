@@ -3,6 +3,24 @@
 extern void lmk_format_log_line(struct lmk_log_handler *handler, char *out, size_t out_size,
                                  const struct lmk_log_request *req);
 
+#define ANSI_RESET  "\033[0m"
+#define ANSI_GRAY   "\033[2;37m"
+#define ANSI_CYAN   "\033[0;36m"
+#define ANSI_WHITE  "\033[0;37m"
+#define ANSI_YELLOW "\033[0;33m"
+#define ANSI_RED    "\033[0;31m"
+
+static const char *lmk_console_level_color(int level) {
+    switch (level) {
+        case LMK_LOG_LEVEL_TRACE: return ANSI_GRAY;
+        case LMK_LOG_LEVEL_DEBUG: return ANSI_CYAN;
+        case LMK_LOG_LEVEL_INFO:  return ANSI_WHITE;
+        case LMK_LOG_LEVEL_WARN:  return ANSI_YELLOW;
+        case LMK_LOG_LEVEL_ERROR: return ANSI_RED;
+        default:                  return ANSI_RESET;
+    }
+}
+
 static void *lmk_console_log_handler_thread_routine(void *arg) {
     struct lmk_console_log_handler *clh = (struct lmk_console_log_handler *) arg;
     int ring_buf_size = lmk_get_config()->ring_buffer_size;
@@ -29,7 +47,9 @@ static void *lmk_console_log_handler_thread_routine(void *arg) {
             size_t buf_size = lmk_get_config()->log_buffer_size;
             char out[buf_size];
             lmk_format_log_line(&clh->base, out, buf_size, &req);
+            fputs(lmk_console_level_color(req.log_level), stdout);
             fputs(out, stdout);
+            fputs(ANSI_RESET, stdout);
             fflush(stdout);
             lmk_free(req.data);
             lmk_free(req.file_name);
