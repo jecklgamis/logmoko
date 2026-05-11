@@ -258,7 +258,7 @@ static const char *g_log_hnd_type_str[] = {"CONSOLE", "FILE", "SOCKET", "SYSLOG"
 const char *lmk_get_log_handler_type_str(int type) {
     const char *type_str = "UNKNOWN";
     if (type >= LMK_LOG_HANDLER_TYPE_CONSOLE && type
-                                                <= LMK_LOG_HANDLER_TYPE_SOCKET) {
+                                                <= LMK_LOG_HANDLER_TYPE_SYSLOG) {
         type_str = g_log_hnd_type_str[type];
     }
     return type_str;
