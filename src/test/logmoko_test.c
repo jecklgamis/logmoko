@@ -938,15 +938,16 @@ TMK_TEST(lmk_test_get_format_fn) {
 }
 
 static int g_custom_format_calls = 0;
-static void custom_format_fn(char *out, size_t out_size,
-                              int log_level, const char *level_str,
-                              const char *timestamp,
-                              const char *file_name, int line_no,
-                              const char *handler_name,
-                              const char *message) {
+static int custom_format_fn(char *out, size_t out_size,
+                             int log_level, const char *level_str,
+                             const char *timestamp,
+                             const char *file_name, int line_no,
+                             const char *handler_name,
+                             const char *message) {
     (void) log_level; (void) timestamp; (void) file_name; (void) line_no; (void) handler_name;
     g_custom_format_calls++;
     snprintf(out, out_size, "CUSTOM [%s] %s\n", level_str, message);
+    return 0;
 }
 
 TMK_TEST(lmk_test_set_log_format) {
