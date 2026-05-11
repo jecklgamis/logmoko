@@ -99,6 +99,7 @@ void lmk_file_log_handler_log_impl(struct lmk_log_handler *handler, void *param)
 
     pthread_mutex_lock(&handler->lock);
     if (flh->count >= lmk_get_config()->ring_buffer_size) {
+        flh->dropped++;
         pthread_mutex_unlock(&handler->lock);
         return;
     }
@@ -126,6 +127,10 @@ void lmk_file_log_handler_destroy(struct lmk_log_handler *handler, void *param) 
     pthread_mutex_unlock(&handler->lock);
     pthread_join(flh->thread, NULL);
     pthread_cond_destroy(&flh->cond);
+
+        if (flh->dropped)
+        fprintf(stderr, "logmoko: file handler '%s' dropped %lu log(s), logged %lu\n",
+                handler->name, flh->dropped, handler->nr_log_calls);
 
     pthread_mutex_lock(&handler->lock);
     if (flh->log_fp != NULL) {

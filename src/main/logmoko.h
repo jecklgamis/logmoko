@@ -70,7 +70,7 @@ struct lmk_log_handler {
     void (*log_impl)(struct lmk_log_handler *, void *);
     int type;
     char *name;
-    unsigned int nr_log_calls;
+    unsigned long nr_log_calls;
     unsigned int nr_logger_ref;
     int initialized;
     pthread_mutex_t lock;
@@ -103,6 +103,7 @@ struct lmk_file_log_handler {
     long max_file_size;
     int  max_backup_files;
     long current_file_size;
+    unsigned long dropped;
 };
 
 #define LMK_DEFAULT_MAX_FILE_SIZE    (20L * 1024 * 1024)
