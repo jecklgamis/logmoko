@@ -201,11 +201,27 @@ Benchmarked on Apple M-series (100,000 INFO logs to a file handler, `-O2`):
 | Enqueue latency (caller-side only) | ~7 ms | ~14M enqueue attempts/sec |
 | Full throughput — all logs written and flushed to disk | ~66 ms | ~1.5M logs/sec |
 
-**Design tradeoffs:**
+The file handler flushes once per drained batch rather than per line, which is the primary driver of write throughput under load.
 
-- The ring buffer size (default 256, configurable via `ring_buffer_size`) determines how much burst can be absorbed. Logs that arrive when the buffer is full are silently dropped rather than blocking the caller.
-- The file handler flushes once per drained batch rather than per line, which is the primary reason write throughput is high under load.
-- For workloads where drop-free delivery matters more than enqueue latency, increase `ring_buffer_size` to match the expected burst size.
+**Choosing a ring buffer size:**
+
+The ring buffer size (`ring_buffer_size`, default 1024) controls how much burst each handler can absorb before dropping. Logs that arrive when the buffer is full are silently discarded rather than blocking the caller. Each slot holds one formatted message (2 KB), so memory per handler is `ring_buffer_size × 2 KB`.
+
+A sweep across buffer sizes against a 100K-log burst shows the tradeoff clearly:
+
+| `ring_buffer_size` | Memory/handler | Written (burst) |
+|---|---|---|
+| 256 | 512 KB | ~7% |
+| 1024 *(default)* | 2 MB | ~9% |
+| 4096 | 8 MB | ~9% |
+| 32768 | 64 MB | ~39% |
+| 100000 | 195 MB | 100% |
+
+The low write percentages in that table reflect a pathological benchmark — 100K logs fired as fast as possible with no work between them. In a real application the producer is doing actual work between log calls, giving the consumer continuous idle time to drain. At a typical sustained rate the default buffer sees near-zero drops.
+
+- **Default (1024)** is a good fit for most workloads.
+- **If you know your burst size**, set `ring_buffer_size` to match it. The buffer will absorb the full burst and the background thread will drain it after the burst subsides.
+- **If you need zero drops under any conditions**, increase the buffer to match your worst-case burst, or use synchronous I/O instead.
 
 ### Contributing
 Please see `CONTRIBUTING.md`
