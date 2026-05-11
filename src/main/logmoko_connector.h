@@ -12,17 +12,9 @@
 
 #include "logmoko_list.h"
 
-struct lmk_inet_socket_address {
-    struct sockaddr_in addr;
-};
-
-struct lmk_inet_address {
-    char ipv4_addr[32];
-};
-
 struct lmk_log_server {
     struct lmk_list link;
-    struct lmk_inet_socket_address socket_addr;
+    struct sockaddr_in socket_addr;
 };
 
 struct lmk_buffer {
@@ -31,18 +23,17 @@ struct lmk_buffer {
 };
 
 struct lmk_udp_packet {
-    struct lmk_inet_socket_address *socket_addr;
+    struct sockaddr_in *socket_addr;
     struct lmk_buffer *buffer;
 };
 
 struct lmk_udp_socket {
     int sockd;
-    struct lmk_inet_address local_addr;
 };
 
 #define LMK_UDP_SOCKET_DEFAULT_SEND_BUFFER_SIZE 2048
 
-LMK_API int lmk_open_udp_socket(struct lmk_udp_socket *socket, struct lmk_inet_address *local_addr);
+LMK_API int lmk_open_udp_socket(struct lmk_udp_socket *socket);
 
 LMK_API void lmk_close_udp_socket(struct lmk_udp_socket *socket);
 

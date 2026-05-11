@@ -1,6 +1,6 @@
 #include "logmoko_connector.h"
 
-LMK_API int lmk_open_udp_socket(struct lmk_udp_socket *udp_socket, struct lmk_inet_address *local_addr) {
+LMK_API int lmk_open_udp_socket(struct lmk_udp_socket *udp_socket) {
     int sockd;
     int send_size = LMK_UDP_SOCKET_DEFAULT_SEND_BUFFER_SIZE;
 
@@ -30,8 +30,8 @@ LMK_API int lmk_send_udp_packet(struct lmk_udp_socket *udp_socket,
     }
     nr_bytes = sendto(udp_socket->sockd, packet->buffer->addr,
                       packet->buffer->size, 0,
-                      (struct sockaddr *) &packet->socket_addr->addr,
-                      sizeof(packet->socket_addr->addr));
+                      (struct sockaddr *) packet->socket_addr,
+                      sizeof(*packet->socket_addr));
 
     if (nr_bytes < 0 || (nr_bytes != packet->buffer->size)) {
         return LMK_E_NG;

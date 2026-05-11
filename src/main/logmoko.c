@@ -119,9 +119,9 @@ LMK_API void lmk_dump_loggers() {
                     LMK_FOR_EACH_ENTRY(&slh->log_server_list, sc) {
                         struct lmk_log_server *ls = (struct lmk_log_server *) sc;
                         char ip[INET_ADDRSTRLEN];
-                        inet_ntop(AF_INET, &ls->socket_addr.addr.sin_addr, ip, sizeof(ip));
+                        inet_ntop(AF_INET, &ls->socket_addr.sin_addr, ip, sizeof(ip));
                         fprintf(stdout, "%s+-listener = %s:%d\n", LEVEL_3_SEPARATOR,
-                                ip, ntohs(ls->socket_addr.addr.sin_port));
+                                ip, ntohs(ls->socket_addr.sin_port));
                     }
                 }
             }

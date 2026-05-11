@@ -45,7 +45,7 @@ void lmk_socket_log_handler_init(struct lmk_log_handler *handler, void *param) {
     struct lmk_socket_log_handler *slh = (struct lmk_socket_log_handler *) handler;
     pthread_mutex_lock(&handler->lock);
     lmk_init_list(&slh->log_server_list);
-    lmk_open_udp_socket(&slh->socket_object, NULL);
+    lmk_open_udp_socket(&slh->socket_object);
     slh->head = 0;
     slh->tail = 0;
     slh->count = 0;
@@ -119,9 +119,9 @@ LMK_API void lmk_attach_log_listener(struct lmk_log_handler *handler, const char
                     sizeof(struct lmk_log_server))) != NULL) {
                 memset(log_server, 0, sizeof(struct lmk_log_server));
                 lmk_init_list(&log_server->link);
-                log_server->socket_addr.addr.sin_family = PF_INET;
-                log_server->socket_addr.addr.sin_port = htons(port);
-                inet_pton(PF_INET, host, &log_server->socket_addr.addr.sin_addr);
+                log_server->socket_addr.sin_family = PF_INET;
+                log_server->socket_addr.sin_port = htons(port);
+                inet_pton(PF_INET, host, &log_server->socket_addr.sin_addr);
                 lmk_insert_list(&slh->log_server_list, &log_server->link);
             }
         }
