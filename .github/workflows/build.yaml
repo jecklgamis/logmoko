@@ -8,32 +8,13 @@ on:
 
 jobs:
   build:
-    name: build (${{ matrix.distro }})
-    runs-on: ubuntu-latest
-    container: ${{ matrix.container }}
-
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - distro: ubuntu-24.04
-            container: ubuntu:24.04
-            install: apt-get update && apt-get install -y gcc make autoconf automake libtool
-          - distro: ubuntu-22.04
-            container: ubuntu:22.04
-            install: apt-get update && apt-get install -y gcc make autoconf automake libtool
-          - distro: alpine-3.21
-            container: alpine:3.21
-            install: apk add --no-cache gcc musl-dev make autoconf automake libtool
-          - distro: fedora-41
-            container: fedora:41
-            install: dnf install -y gcc make autoconf automake libtool
+    runs-on: ubuntu-24.04
 
     steps:
       - uses: actions/checkout@v4
 
       - name: Install dependencies
-        run: ${{ matrix.install }}
+        run: sudo apt-get update && sudo apt-get install -y autoconf automake libtool
 
       - name: Generate build system
         run: ./autogen.sh
