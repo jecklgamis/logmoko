@@ -68,8 +68,9 @@ log_buffer_size  = 2048
 ring_buffer_size = 256
 
 [handler:console]
-type  = console
-level = trace
+type   = console
+level  = trace
+format = json
 
 [handler:file]
 type             = file
@@ -77,11 +78,13 @@ level            = trace
 filename         = app.log
 max_file_size    = 104857600
 max_backup_files = 10
+format           = simple
 
 [handler:remote]
 type     = socket
 level    = trace
 listener = 127.0.0.1:9000
+format   = json
 
 [logger:app]
 level    = info
