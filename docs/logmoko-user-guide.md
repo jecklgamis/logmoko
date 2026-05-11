@@ -25,41 +25,43 @@ $ make all
 $ sudo make install
 ```
 
+This installs `liblogmoko.a` in `/usr/local/lib` and headers in `/usr/local/include`.
+
 ## Example
 
-example_app.c:
+[src/examples/example_app.c](../src/examples/example_app.c)
 ```c
 #include "logmoko.h"
 
 int main(int argc, char *argv[]) {
-      struct lmk_logger *logger = lmk_get_logger("logger");
+    struct lmk_logger *logger = lmk_get_logger("logger");
 
-      struct lmk_log_handler *console = lmk_get_console_log_handler();
-      struct lmk_log_handler *file    = lmk_get_file_log_handler("file", "example_app.log");
+    struct lmk_log_handler *console = lmk_get_console_log_handler();
+    struct lmk_log_handler *file    = lmk_get_file_log_handler("file", "example_app.log");
 
-      lmk_attach_log_handler(logger, console);
-      lmk_attach_log_handler(logger, file);
+    lmk_attach_log_handler(logger, console);
+    lmk_attach_log_handler(logger, file);
 
-      lmk_set_log_level(logger, LMK_LOG_LEVEL_TRACE);
+    lmk_set_log_level(logger, LMK_LOG_LEVEL_TRACE);
 
-      LMK_LOG_TRACE(logger, "This is a trace log");
-      LMK_LOG_DEBUG(logger, "This is a debug log");
-      LMK_LOG_INFO(logger, "This is an info log");
-      LMK_LOG_WARN(logger, "This is a warn log");
-      LMK_LOG_ERROR(logger, "This is an error log");
+    LMK_LOG_TRACE(logger, "This is a trace log");
+    LMK_LOG_DEBUG(logger, "This is a debug log");
+    LMK_LOG_INFO(logger, "This is an info log");
+    LMK_LOG_WARN(logger, "This is a warn log");
+    LMK_LOG_ERROR(logger, "This is an error log");
 
-      lmk_destroy();
-      return EXIT_SUCCESS;
+    lmk_destroy();
+    return EXIT_SUCCESS;
 }
 ```
 
-Build and run the app:
+Build and run:
 ```
 gcc -o example_app example_app.c -llogmoko
-chmod +x ./example_app
 ./example_app
 ```
-Example output:
+
+Output:
 ```
 [TRACE Mon May 11 06:42:10 2026 (example_app.c:21)] : This is a trace log
 [DEBUG Mon May 11 06:42:10 2026 (example_app.c:22)] : This is a debug log
@@ -68,80 +70,48 @@ Example output:
 [ERROR Mon May 11 06:42:10 2026 (example_app.c:25)] : This is an error log
 ```
 
-
-## Logmoko APIs
+## API Reference
 
 ### Initializing
 
 ```c
 void lmk_init();
 void lmk_destroy();
+int  lmk_init_from_file(const char *path);
 ```
 
-To initialise from a config file:
-```c
-int lmk_init_from_file(const char *path);
-```
-
-Passing `NULL` auto-detects the config: checks the `LMK_CONFIG_FILE` environment variable first,
-then falls back to `logmoko.conf` in the current directory.
-
+`lmk_init_from_file` with `NULL` auto-detects the config: checks the `LMK_CONFIG_FILE` environment
+variable first, then falls back to `logmoko.conf` in the current directory.
 
 ### Loggers
-The logger is the main object used for logging requests. A logger object is passed to the logging macros (`LMK_LOG_XXX`)
-when logging. Use `lmk_get_logger` to create or retrieve an existing logger. You can create multiple loggers with different names.
-Loggers are created with a default log level of `LMK_LOG_LEVEL_INFO`.
 
-API:
+Loggers filter and route log requests to one or more handlers. Created with a default level of `INFO`.
+
 ```c
 struct lmk_logger *lmk_get_logger(const char *name);
 void lmk_set_log_level(struct lmk_logger *logger, int log_level);
 int  lmk_get_log_level(struct lmk_logger *logger);
 ```
 
-`log_level` is one of:
-```
-LMK_LOG_LEVEL_TRACE
-LMK_LOG_LEVEL_DEBUG
-LMK_LOG_LEVEL_INFO
-LMK_LOG_LEVEL_WARN
-LMK_LOG_LEVEL_ERROR
-LMK_LOG_LEVEL_OFF
-```
+Log levels (lowest to highest): `LMK_LOG_LEVEL_TRACE`, `LMK_LOG_LEVEL_DEBUG`, `LMK_LOG_LEVEL_INFO`,
+`LMK_LOG_LEVEL_WARN`, `LMK_LOG_LEVEL_ERROR`, `LMK_LOG_LEVEL_OFF`.
 
-A logger can be assigned a log level that is used to filter out log requests. Below is the hierarchy of the log levels.
-```
-TRACE < DEBUG < INFO < WARN < ERROR
-```
-If the logger has log level `l`, a request is logged if its level `u >= l`. For example, if the logger's
-log level is `INFO`, requests with level `INFO`, `WARN`, and `ERROR` are logged while `DEBUG` and `TRACE`
-are ignored.
+A request is logged if its level ≥ the logger's level.
 
-To log a message at a specific level, use the following macros. They accept arguments similar to `fprintf`.
-
+Logging macros (accept `printf`-style format strings):
 ```c
 LMK_LOG_TRACE(logger, format...)
 LMK_LOG_DEBUG(logger, format...)
 LMK_LOG_INFO(logger, format...)
 LMK_LOG_WARN(logger, format...)
 LMK_LOG_ERROR(logger, format...)
-LMK_IS_LOG_ENABLED(logger_or_handler, level)
-```
-
-Example:
-```c
-LMK_LOG_INFO(logger, "This is an info log");
-LMK_LOG_INFO(logger, "This is an info log with integer param : %d", 1024);
 ```
 
 ### Log Handlers
-A logger uses one or more handlers to do the actual logging to a specific interface. Logmoko supports console,
-file, and socket log handler types. Log handlers are created with a default log level of `LMK_LOG_LEVEL_TRACE`.
 
-Each handler runs a background consumer thread with a fixed-size ring buffer. If the buffer is full when a log
-request arrives, the request is discarded rather than blocking the caller.
+Handlers perform the actual I/O. Each runs a background consumer thread with a ring buffer; logs
+that arrive when the buffer is full are discarded rather than blocking the caller.
 
-API:
 ```c
 struct lmk_log_handler *lmk_get_console_log_handler();
 struct lmk_log_handler *lmk_get_file_log_handler(const char *name, const char *filename);
@@ -149,69 +119,67 @@ struct lmk_log_handler *lmk_get_socket_log_handler(const char *name);
 struct lmk_log_handler *lmk_get_syslog_log_handler(const char *name, const char *ident, int facility);
 int  lmk_attach_log_handler(struct lmk_logger *logger, struct lmk_log_handler *handler);
 int  lmk_detach_log_handler(struct lmk_logger *logger, struct lmk_log_handler *handler);
-void lmk_attach_log_listener(struct lmk_log_handler *handler, const char *host, int port);
 void lmk_set_handler_log_level(struct lmk_log_handler *handler, int log_level);
-int  lmk_get_handler_log_level(struct lmk_log_handler *handler);
 ```
 
-All factory functions return `NULL` if `name` is NULL, if memory allocation fails, or if the background thread cannot be started. `lmk_get_file_log_handler` additionally returns `NULL` if `filename` is NULL — a filename is always required. Always check the return value before attaching a handler.
+All factory functions return `NULL` on failure (NULL name, allocation failure, thread creation
+failure). `lmk_get_file_log_handler` also returns `NULL` if `filename` is NULL. Always check the
+return value before attaching a handler.
 
-#### Console log handler example:
+#### Console handler
 ```c
-#include "logmoko.h"
-
-int main(int argc, char *argv[]) {
-    lmk_init();
-    struct lmk_logger *logger = lmk_get_logger("some-logger");
-    lmk_attach_log_handler(logger, lmk_get_console_log_handler());
-    LMK_LOG_INFO(logger, "this is an info log");
-    lmk_destroy();
-    return EXIT_SUCCESS;
-}
+struct lmk_log_handler *console = lmk_get_console_log_handler();
+lmk_attach_log_handler(logger, console);
 ```
 
-#### File log handler example:
+#### File handler
 ```c
-#include "logmoko.h"
-
-int main(int argc, char *argv[]) {
-    lmk_init();
-    struct lmk_logger *logger = lmk_get_logger("some-logger");
-    struct lmk_log_handler *flh = lmk_get_file_log_handler("file-handler", "example_app.log");
-    lmk_attach_log_handler(logger, flh);
-    LMK_LOG_INFO(logger, "this is an info log");
-    lmk_destroy();
-    return EXIT_SUCCESS;
-}
+struct lmk_log_handler *file = lmk_get_file_log_handler("file", "app.log");
+lmk_attach_log_handler(logger, file);
 ```
 
-#### Socket log handler example:
+#### Socket handler (UDP)
 ```c
-#include "logmoko.h"
-
-int main(int argc, char *argv[]) {
-    lmk_init();
-    struct lmk_logger *logger  = lmk_get_logger("logger");
-    struct lmk_log_handler *handler = lmk_get_socket_log_handler("socket");
-    lmk_attach_log_listener(handler, "127.0.0.1", 9000);
-    lmk_attach_log_handler(logger, handler);
-    LMK_LOG_INFO(logger, "this is an info log");
-    lmk_destroy();
-    return EXIT_SUCCESS;
-}
+struct lmk_log_handler *sock = lmk_get_socket_log_handler("socket");
+lmk_attach_log_listener(sock, "127.0.0.1", 9000);
+lmk_attach_log_handler(logger, sock);
 ```
 
-A simple UDP socket listener can be set up using the `nc` utility:
+Listen with `nc`:
 ```
 $ nc -l -u localhost 9000
 ```
 
+#### Syslog handler
+```c
+struct lmk_log_handler *sl = lmk_get_syslog_log_handler("syslog", "myapp", LOG_DAEMON);
+lmk_attach_log_handler(logger, sl);
+```
+
+Logmoko levels map to syslog priorities:
+
+| Logmoko | syslog |
+|---|---|
+| TRACE / DEBUG | `LOG_DEBUG` |
+| INFO | `LOG_INFO` |
+| WARN | `LOG_WARNING` |
+| ERROR | `LOG_ERR` |
+
+View output on macOS:
+```
+log show --predicate 'eventMessage contains "myapp"' --last 5m
+```
+
+On Linux:
+```
+journalctl -t myapp
+```
+
 ### Log Rotation
 
-File handlers rotate the log file when it reaches a configurable size. Backup files are named
-`app.log.1`, `app.log.2`, … up to the configured maximum. Defaults are 20 MB and 10 backup files.
+File handlers rotate when the log file reaches a configurable size. Defaults: 20 MB, 10 backups.
+Backup files are named `app.log.1`, `app.log.2`, …
 
-API:
 ```c
 void lmk_set_log_rotation(struct lmk_log_handler *handler, long max_file_size, int max_backup_files);
 ```
@@ -224,12 +192,12 @@ lmk_set_log_rotation(file, 50 * 1024 * 1024, 5);  /* 50 MB, keep 5 backups */
 
 ### Log Format
 
-The default log line format is:
+Default format:
 ```
 [LEVEL  timestamp (file:line) handler] : message
 ```
 
-#### Named presets
+**Named presets:**
 
 | Name | Output |
 |---|---|
@@ -237,41 +205,55 @@ The default log line format is:
 | `simple`  | `timestamp [LEVEL] message` |
 | `json`    | `{"timestamp":"...","level":"...","file":"...","line":N,"handler":"...","message":"..."}` |
 
-Select a preset via the API:
 ```c
 lmk_set_log_format(handler, lmk_get_format_fn("simple"));
+lmk_set_log_format(handler, NULL);   /* restore default */
 ```
 
-Restore the default:
-```c
-lmk_set_log_format(handler, NULL);
-```
-
-#### Custom format function
+**Custom format function:**
 
 Supply any function matching `lmk_format_fn`:
 ```c
-void my_format(char *out, size_t out_size,
-               int log_level, const char *level_str,
-               const char *timestamp,
-               const char *file_name, int line_no,
-               const char *handler_name,
-               const char *message) {
-    snprintf(out, out_size, "%s [%s] %s\n", timestamp, level_str, message);
+int my_format(char *out, size_t out_size,
+              int log_level, const char *level_str,
+              const char *timestamp,
+              const char *file_name, int line_no,
+              const char *handler_name,
+              const char *message) {
+    return snprintf(out, out_size, "%s [%s] %s\n", timestamp, level_str, message);
 }
 
 lmk_set_log_format(handler, my_format);
 ```
 
-### Config File
+### Thread Safety
 
-Logmoko can be initialised entirely from an INI config file.
+All `LMK_LOG_*` calls are thread-safe. Multiple threads can log concurrently on the same logger
+with no locking — each thread formats into a thread-local buffer before handing off to the
+handler's lock-free ring buffer.
+
+**Safe to do concurrently:** logging from any number of threads; attaching/detaching handlers from
+different loggers simultaneously.
+
+**Must be done before spawning logging threads:** creating loggers and attaching handlers. The
+framework does not lock logger or handler lists during log calls.
+
+**Dropped logs:** when a handler's ring buffer is full, the calling thread increments a `dropped`
+counter and returns immediately. The count is printed to stderr when the handler is destroyed.
+
+## Config File
+
+Logmoko can be fully initialised from an INI config file:
 
 ```c
 lmk_init_from_file("logmoko.conf");
+struct lmk_logger *logger = lmk_get_logger("app");
+LMK_LOG_INFO(logger, "Hello from config");
+lmk_destroy();
 ```
 
-Config file format:
+**Schema:**
+
 ```ini
 [global]
 log_buffer_size  = 2048    ; per-log message buffer size in bytes (default: 2048)
@@ -293,11 +275,12 @@ level    = trace | debug | info | warn | error | off
 handlers = <handler-name>[, ...]
 ```
 
-Full example (`logmoko.conf`):
+**Full example (`logmoko.conf`):**
+
 ```ini
 [global]
 log_buffer_size  = 2048
-ring_buffer_size = 256
+ring_buffer_size = 1024
 
 [handler:console]
 type   = console
@@ -318,7 +301,13 @@ level    = trace
 listener = 127.0.0.1:9000
 format   = json
 
+[handler:syslog]
+type     = syslog
+level    = info
+ident    = myapp
+facility = daemon
+
 [logger:app]
 level    = info
-handlers = console, file, remote
+handlers = console, file, remote, syslog
 ```
