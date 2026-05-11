@@ -481,6 +481,214 @@ TMK_TEST(lmk_test_socket_log_handler) {
     lmk_destroy();
 }
 
+TMK_TEST(lmk_test_detach_log_handler) {
+    struct lmk_logger *logger = lmk_get_logger("logger");
+    TMK_ASSERT_NOT_NULL(logger);
+
+    struct lmk_log_handler *clh = lmk_get_console_log_handler();
+    TMK_ASSERT_NOT_NULL(clh);
+
+    struct lmk_log_handler *flh = lmk_get_file_log_handler("flh", "flh.log");
+    TMK_ASSERT_NOT_NULL(flh);
+
+    TMK_ASSERT_EQUAL(LMK_E_OK, lmk_attach_log_handler(logger, clh));
+    TMK_ASSERT_EQUAL(LMK_E_OK, lmk_attach_log_handler(logger, flh));
+    TMK_ASSERT_EQUAL(2, lmk_get_list_size(&logger->handler_ref_list));
+    TMK_ASSERT_EQUAL(1, clh->nr_logger_ref);
+    TMK_ASSERT_EQUAL(1, flh->nr_logger_ref);
+
+    TMK_ASSERT_EQUAL(LMK_E_OK, lmk_detach_log_handler(logger, clh));
+    TMK_ASSERT_EQUAL(1, lmk_get_list_size(&logger->handler_ref_list));
+    TMK_ASSERT_EQUAL(0, clh->nr_logger_ref);
+    TMK_ASSERT_EQUAL(1, flh->nr_logger_ref);
+
+    TMK_ASSERT_EQUAL(LMK_E_OK, lmk_detach_log_handler(logger, flh));
+    TMK_ASSERT_EQUAL(0, lmk_get_list_size(&logger->handler_ref_list));
+    TMK_ASSERT_EQUAL(0, flh->nr_logger_ref);
+
+    lmk_destroy();
+}
+
+TMK_TEST(lmk_test_detach_unattached_handler) {
+    struct lmk_logger *logger = lmk_get_logger("logger");
+    TMK_ASSERT_NOT_NULL(logger);
+
+    struct lmk_log_handler *clh = lmk_get_console_log_handler();
+    TMK_ASSERT_NOT_NULL(clh);
+
+    TMK_ASSERT_EQUAL(LMK_E_NG, lmk_detach_log_handler(logger, clh));
+
+    lmk_destroy();
+}
+
+TMK_TEST(lmk_test_detach_null_args) {
+    struct lmk_logger *logger = lmk_get_logger("logger");
+    struct lmk_log_handler *clh = lmk_get_console_log_handler();
+
+    TMK_ASSERT_EQUAL(LMK_E_NG, lmk_detach_log_handler(NULL, clh));
+    TMK_ASSERT_EQUAL(LMK_E_NG, lmk_detach_log_handler(logger, NULL));
+
+    lmk_destroy();
+}
+
+TMK_TEST(lmk_test_get_handler_log_level) {
+    struct lmk_log_handler *clh = lmk_get_console_log_handler();
+    TMK_ASSERT_NOT_NULL(clh);
+
+    lmk_set_handler_log_level(clh, LMK_LOG_LEVEL_WARN);
+    TMK_ASSERT_EQUAL(LMK_LOG_LEVEL_WARN, lmk_get_handler_log_level(clh));
+
+    lmk_set_handler_log_level(clh, LMK_LOG_LEVEL_ERROR);
+    TMK_ASSERT_EQUAL(LMK_LOG_LEVEL_ERROR, lmk_get_handler_log_level(clh));
+
+    lmk_set_handler_log_level(clh, LMK_LOG_LEVEL_TRACE);
+    TMK_ASSERT_EQUAL(LMK_LOG_LEVEL_TRACE, lmk_get_handler_log_level(clh));
+
+    lmk_destroy();
+}
+
+TMK_TEST(lmk_test_get_log_level_str) {
+    TMK_ASSERT_EQUAL_STRING("TRACE",   lmk_get_log_level_str(LMK_LOG_LEVEL_TRACE));
+    TMK_ASSERT_EQUAL_STRING("DEBUG",   lmk_get_log_level_str(LMK_LOG_LEVEL_DEBUG));
+    TMK_ASSERT_EQUAL_STRING("INFO",    lmk_get_log_level_str(LMK_LOG_LEVEL_INFO));
+    TMK_ASSERT_EQUAL_STRING("WARN",    lmk_get_log_level_str(LMK_LOG_LEVEL_WARN));
+    TMK_ASSERT_EQUAL_STRING("ERROR",   lmk_get_log_level_str(LMK_LOG_LEVEL_ERROR));
+    TMK_ASSERT_EQUAL_STRING("OFF",     lmk_get_log_level_str(LMK_LOG_LEVEL_OFF));
+    TMK_ASSERT_EQUAL_STRING("UNKNOWN", lmk_get_log_level_str(LMK_LOG_LEVEL_UNKNOWN));
+    TMK_ASSERT_EQUAL_STRING("UNKNOWN", lmk_get_log_level_str(-1));
+    lmk_destroy();
+}
+
+TMK_TEST(lmk_test_get_log_handler_type_str) {
+    TMK_ASSERT_NOT_NULL(lmk_get_log_handler_type_str(LMK_LOG_HANDLER_TYPE_CONSOLE));
+    TMK_ASSERT_NOT_NULL(lmk_get_log_handler_type_str(LMK_LOG_HANDLER_TYPE_FILE));
+    TMK_ASSERT_NOT_NULL(lmk_get_log_handler_type_str(LMK_LOG_HANDLER_TYPE_SOCKET));
+    TMK_ASSERT_NOT_NULL(lmk_get_log_handler_type_str(LMK_LOG_HANDLER_TYPE_SYSLOG));
+    lmk_destroy();
+}
+
+TMK_TEST(lmk_test_search_logger_by_name) {
+    struct lmk_logger *logger = lmk_get_logger("my-logger");
+    TMK_ASSERT_NOT_NULL(logger);
+
+    struct lmk_logger *found = lmk_search_logger_by_name("my-logger");
+    TMK_ASSERT_NOT_NULL(found);
+    TMK_ASSERT_EQUAL_PTRS(logger, found);
+
+    TMK_ASSERT_NULL(lmk_search_logger_by_name("nonexistent"));
+    TMK_ASSERT_NULL(lmk_search_logger_by_name(NULL));
+
+    lmk_destroy();
+}
+
+TMK_TEST(lmk_test_search_log_handler_by_name) {
+    struct lmk_log_handler *clh = lmk_get_console_log_handler();
+    TMK_ASSERT_NOT_NULL(clh);
+
+    struct lmk_log_handler *flh = lmk_get_file_log_handler("my-file-handler", "test.log");
+    TMK_ASSERT_NOT_NULL(flh);
+
+    struct lmk_log_handler *found_clh = lmk_search_log_handler_by_name("console");
+    TMK_ASSERT_NOT_NULL(found_clh);
+    TMK_ASSERT_EQUAL_PTRS(clh, found_clh);
+
+    struct lmk_log_handler *found_flh = lmk_search_log_handler_by_name("my-file-handler");
+    TMK_ASSERT_NOT_NULL(found_flh);
+    TMK_ASSERT_EQUAL_PTRS(flh, found_flh);
+
+    TMK_ASSERT_NULL(lmk_search_log_handler_by_name("nonexistent"));
+    TMK_ASSERT_NULL(lmk_search_log_handler_by_name(NULL));
+
+    lmk_destroy();
+}
+
+TMK_TEST(lmk_test_find_handler) {
+    struct lmk_logger *logger = lmk_get_logger("logger");
+    TMK_ASSERT_NOT_NULL(logger);
+
+    struct lmk_log_handler *clh = lmk_get_console_log_handler();
+    TMK_ASSERT_NOT_NULL(clh);
+
+    struct lmk_log_handler *flh = lmk_get_file_log_handler("flh", "flh.log");
+    TMK_ASSERT_NOT_NULL(flh);
+
+    TMK_ASSERT_NULL(lmk_find_handler(logger, "console"));
+
+    lmk_attach_log_handler(logger, clh);
+    lmk_attach_log_handler(logger, flh);
+
+    TMK_ASSERT_EQUAL_PTRS(clh, lmk_find_handler(logger, "console"));
+    TMK_ASSERT_EQUAL_PTRS(flh, lmk_find_handler(logger, "flh"));
+    TMK_ASSERT_NULL(lmk_find_handler(logger, "nonexistent"));
+    TMK_ASSERT_NULL(lmk_find_handler(NULL, "console"));
+    TMK_ASSERT_NULL(lmk_find_handler(logger, NULL));
+
+    lmk_destroy();
+}
+
+TMK_TEST(lmk_test_syslog_log_handler) {
+    struct lmk_log_handler *slh = lmk_get_syslog_log_handler("syslog-handler", "logmoko-test", 0);
+    TMK_ASSERT_NOT_NULL(slh);
+    TMK_ASSERT_EQUAL(LMK_LOG_HANDLER_TYPE_SYSLOG, slh->type);
+    TMK_ASSERT_TRUE(slh->initialized);
+
+    struct lmk_logger *logger = lmk_get_logger("logger");
+    TMK_ASSERT_NOT_NULL(logger);
+    lmk_set_log_level(logger, LMK_LOG_LEVEL_TRACE);
+    lmk_set_handler_log_level(slh, LMK_LOG_LEVEL_TRACE);
+    lmk_attach_log_handler(logger, slh);
+
+    slh->nr_log_calls = 0;
+    LMK_LOG_INFO(logger, "Test syslog message");
+    LMK_LOG_WARN(logger, "Test syslog warning");
+
+    TMK_ASSERT_EQUAL(2, slh->nr_log_calls);
+
+    lmk_destroy();
+}
+
+TMK_TEST(lmk_test_get_log_level_null_logger) {
+    TMK_ASSERT_EQUAL(LMK_LOG_LEVEL_UNKNOWN, lmk_get_log_level(NULL));
+    lmk_destroy();
+}
+
+TMK_TEST(lmk_test_set_log_level_invalid) {
+    struct lmk_logger *logger = lmk_get_logger("logger");
+    TMK_ASSERT_NOT_NULL(logger);
+
+    lmk_set_log_level(logger, LMK_LOG_LEVEL_INFO);
+    lmk_set_log_level(logger, -1);
+    TMK_ASSERT_EQUAL(LMK_LOG_LEVEL_INFO, lmk_get_log_level(logger));
+
+    lmk_set_log_level(logger, 999);
+    TMK_ASSERT_EQUAL(LMK_LOG_LEVEL_INFO, lmk_get_log_level(logger));
+
+    lmk_destroy();
+}
+
+TMK_TEST(lmk_test_logger_filters_before_handler) {
+    struct lmk_logger *logger = lmk_get_logger("logger");
+    TMK_ASSERT_NOT_NULL(logger);
+
+    struct lmk_log_handler *clh = lmk_get_console_log_handler();
+    TMK_ASSERT_NOT_NULL(clh);
+
+    lmk_set_log_level(logger, LMK_LOG_LEVEL_ERROR);
+    lmk_set_handler_log_level(clh, LMK_LOG_LEVEL_TRACE);
+    lmk_attach_log_handler(logger, clh);
+
+    clh->nr_log_calls = 0;
+    LMK_LOG_TRACE(logger, "trace");
+    LMK_LOG_DEBUG(logger, "debug");
+    LMK_LOG_INFO(logger,  "info");
+    LMK_LOG_WARN(logger,  "warn");
+    LMK_LOG_ERROR(logger, "error");
+
+    TMK_ASSERT_EQUAL(1, clh->nr_log_calls);
+
+    lmk_destroy();
+}
+
 TMK_TEST(lmk_test_file_write_perf) {
     struct lmk_logger *logger = lmk_get_logger("logger");
     struct lmk_log_handler *flh = lmk_get_file_log_handler("file-handler", "perf-test.log");
@@ -512,6 +720,19 @@ TMK_TEST_FUNCTION_TABLE_START(test_function_table)
     TMK_INCLUDE_TEST(lmk_test_multiple_threads)
     TMK_INCLUDE_TEST(lmk_test_console_log_handler)
     TMK_INCLUDE_TEST(lmk_test_socket_log_handler)
+    TMK_INCLUDE_TEST(lmk_test_detach_log_handler)
+    TMK_INCLUDE_TEST(lmk_test_detach_unattached_handler)
+    TMK_INCLUDE_TEST(lmk_test_detach_null_args)
+    TMK_INCLUDE_TEST(lmk_test_get_handler_log_level)
+    TMK_INCLUDE_TEST(lmk_test_get_log_level_str)
+    TMK_INCLUDE_TEST(lmk_test_get_log_handler_type_str)
+    TMK_INCLUDE_TEST(lmk_test_search_logger_by_name)
+    TMK_INCLUDE_TEST(lmk_test_search_log_handler_by_name)
+    TMK_INCLUDE_TEST(lmk_test_find_handler)
+    TMK_INCLUDE_TEST(lmk_test_syslog_log_handler)
+    TMK_INCLUDE_TEST(lmk_test_get_log_level_null_logger)
+    TMK_INCLUDE_TEST(lmk_test_set_log_level_invalid)
+    TMK_INCLUDE_TEST(lmk_test_logger_filters_before_handler)
     TMK_INCLUDE_TEST(lmk_test_file_write_perf)
 TMK_TEST_FUNCTION_TABLE_END
 
