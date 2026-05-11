@@ -96,7 +96,7 @@ int main(int argc, char *argv[]) {
 
 ### Performance
 
-logmoko delivers ~1.2M logs/sec sustained throughput, ~1 µs p99 enqueue latency, flat scaling across 1–8 producer threads, and ~1.5 ns/call overhead for filtered (non-emitting) log calls.
+logmoko delivers ~1.2M logs/sec sustained throughput, ~1 µs p99 enqueue latency, flat scaling across 1–8 producer threads, and ~1.5 ns/call overhead for filtered (non-emitting) log calls — with ~1.4M logs/sec for large messages (~2 KB) and ~3.3M logs/sec for small messages (~62 B).
 
 Each handler runs a dedicated background thread draining a lock-free ring buffer. The caller's cost
 is a CAS on the ring head, a `memcpy` into the claimed slot, and a conditional wakeup (only when
