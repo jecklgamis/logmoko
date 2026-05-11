@@ -1,118 +1,124 @@
 #include "logmoko.h"
 
-extern void lmk_format_log_line(struct lmk_log_handler *handler, char *out, size_t out_size,
-                                 const struct lmk_log_request *req);
+static inline void lmk_socket_maybe_wake(struct lmk_socket_log_handler *slh) {
+    atomic_thread_fence(memory_order_seq_cst);
+    if (atomic_load_explicit(&slh->sleeping, memory_order_seq_cst)) {
+        pthread_mutex_lock(&slh->wakeup_lock);
+        pthread_cond_signal(&slh->wakeup_cond);
+        pthread_mutex_unlock(&slh->wakeup_lock);
+    }
+}
 
 static void *lmk_socket_log_handler_thread_routine(void *arg) {
-    struct lmk_socket_log_handler *slh = (struct lmk_socket_log_handler *) arg;
-    int ring_buf_size = lmk_get_config()->ring_buffer_size;
+    struct lmk_socket_log_handler *slh = (struct lmk_socket_log_handler *)arg;
+    char out[LMK_LOG_MSG_MAX_SIZE + 512];
 
     while (1) {
-        pthread_mutex_lock(&slh->base.lock);
-        while (slh->count == 0 && slh->running)
-            pthread_cond_wait(&slh->cond, &slh->base.lock);
-        if (slh->count == 0) {
-            pthread_mutex_unlock(&slh->base.lock);
+        struct lmk_ring_slot *slot;
+        while ((slot = lmk_ring_peek_slot(slh->ring_buffer, slh->tail, slh->ring_mask))) {
+            int n = lmk_format_log_line(&slh->base, out, sizeof(out), &slot->req);
+            if (n > 0) {
+                struct lmk_list *cursor;
+                /* Server list is append-only after init; safe to read without lock. */
+                LMK_FOR_EACH_ENTRY(&slh->log_server_list, cursor) {
+                    struct lmk_log_server *log_server = (struct lmk_log_server *)cursor;
+                    struct lmk_buffer buffer = { .addr = (unsigned char *)out, .size = (size_t)n };
+                    struct lmk_udp_packet packet = { .buffer = &buffer,
+                                                     .socket_addr = &log_server->socket_addr };
+                    lmk_send_udp_packet(&slh->socket_object, &packet);
+                }
+            }
+            lmk_ring_consume(slh->ring_buffer, &slh->tail, slh->ring_mask);
+        }
+
+        if (!atomic_load_explicit(&slh->running, memory_order_acquire))
             break;
-        }
-        struct lmk_log_request *slot = &slh->ring_buffer[slh->tail];
-        pthread_mutex_unlock(&slh->base.lock);
 
-        char out[LMK_CFG_DEFAULT_LOG_BUFFER_SIZE];
-        lmk_format_log_line(&slh->base, out, sizeof(out), slot);
-        struct lmk_list *cursor;
-        LMK_FOR_EACH_ENTRY(&slh->log_server_list, cursor) {
-            struct lmk_log_server *log_server = (struct lmk_log_server *) cursor;
-            struct lmk_buffer buffer;
-            buffer.addr = (unsigned char *) out;
-            buffer.size = strlen(out);
-            struct lmk_udp_packet packet;
-            packet.buffer = &buffer;
-            packet.socket_addr = &log_server->socket_addr;
-            lmk_send_udp_packet(&slh->socket_object, &packet);
-        }
-
-        pthread_mutex_lock(&slh->base.lock);
-        slh->tail = (slh->tail + 1) % ring_buf_size;
-        slh->count--;
-        pthread_mutex_unlock(&slh->base.lock);
+        pthread_mutex_lock(&slh->wakeup_lock);
+        atomic_store_explicit(&slh->sleeping, 1, memory_order_seq_cst);
+        while (!lmk_ring_peek_slot(slh->ring_buffer, slh->tail, slh->ring_mask) &&
+               atomic_load_explicit(&slh->running, memory_order_relaxed))
+            pthread_cond_wait(&slh->wakeup_cond, &slh->wakeup_lock);
+        atomic_store_explicit(&slh->sleeping, 0, memory_order_relaxed);
+        pthread_mutex_unlock(&slh->wakeup_lock);
     }
     return NULL;
 }
 
 void lmk_socket_log_handler_init(struct lmk_log_handler *handler, void *param) {
-    struct lmk_socket_log_handler *slh = (struct lmk_socket_log_handler *) handler;
+    struct lmk_socket_log_handler *slh = (struct lmk_socket_log_handler *)handler;
     pthread_mutex_lock(&handler->lock);
     lmk_init_list(&slh->log_server_list);
     lmk_open_udp_socket(&slh->socket_object);
-    slh->head = 0;
-    slh->tail = 0;
-    slh->count = 0;
-    slh->running = 1;
-    slh->ring_buffer = lmk_malloc(sizeof(struct lmk_log_request) * lmk_get_config()->ring_buffer_size);
+
+    size_t ring_size = lmk_next_pow2((size_t)lmk_get_config()->ring_buffer_size);
+    slh->ring_mask   = ring_size - 1;
+    slh->ring_buffer = lmk_malloc(sizeof(struct lmk_ring_slot) * ring_size);
     if (!slh->ring_buffer) {
         fprintf(stderr, "logmoko: unable to allocate socket handler ring buffer\n");
         lmk_close_udp_socket(&slh->socket_object);
         pthread_mutex_unlock(&handler->lock);
         return;
     }
-    pthread_cond_init(&slh->cond, NULL);
-    if (pthread_create(&slh->thread, NULL, lmk_socket_log_handler_thread_routine, slh) != 0) {
+    lmk_ring_init(slh->ring_buffer, ring_size);
+    atomic_init(&slh->head, 0);
+    slh->tail = 0;
+    atomic_init(&slh->running, 1);
+    atomic_init(&slh->sleeping, 0);
+    atomic_init(&slh->dropped, 0);
+    pthread_mutex_init(&slh->wakeup_lock, NULL);
+    pthread_cond_init(&slh->wakeup_cond, NULL);
+
+    if (pthread_create(&slh->thread, NULL,
+                       lmk_socket_log_handler_thread_routine, slh) != 0) {
         fprintf(stderr, "logmoko: unable to create socket handler thread\n");
         lmk_free(slh->ring_buffer);
         slh->ring_buffer = NULL;
-        slh->running = 0;
+        atomic_store(&slh->running, 0);
         lmk_close_udp_socket(&slh->socket_object);
-        pthread_mutex_unlock(&handler->lock);
-        return;
+        pthread_cond_destroy(&slh->wakeup_cond);
+        pthread_mutex_destroy(&slh->wakeup_lock);
     }
     pthread_mutex_unlock(&handler->lock);
 }
 
 void lmk_socket_log_handler_log_impl(struct lmk_log_handler *handler, void *param) {
-    struct lmk_socket_log_handler *slh = (struct lmk_socket_log_handler *) handler;
-    struct lmk_log_record *log_rec = (struct lmk_log_record *) param;
+    struct lmk_socket_log_handler *slh = (struct lmk_socket_log_handler *)handler;
+    struct lmk_log_record *rec = (struct lmk_log_record *)param;
 
-    pthread_mutex_lock(&handler->lock);
-    if (slh->count >= lmk_get_config()->ring_buffer_size) {
-        slh->dropped++;
-        pthread_mutex_unlock(&handler->lock);
+    if (!atomic_load_explicit(&slh->running, memory_order_relaxed))
+        return;
+    if (!lmk_ring_enqueue(slh->ring_buffer, &slh->head, slh->ring_mask,
+                          rec, handler->name)) {
+        atomic_fetch_add_explicit(&slh->dropped, 1, memory_order_relaxed);
         return;
     }
-    if (slh->running) {
-        struct lmk_log_request *req = &slh->ring_buffer[slh->head];
-        req->log_level = log_rec->log_level;
-        req->line_no = log_rec->line_no;
-        strncpy(req->data, log_rec->data, LMK_LOG_MSG_MAX_SIZE - 1);
-        req->data[LMK_LOG_MSG_MAX_SIZE - 1] = '\0';
-        req->file_name = log_rec->file_name;
-        req->handler_name = handler->name;
-        slh->head = (slh->head + 1) % lmk_get_config()->ring_buffer_size;
-        slh->count++;
-        handler->nr_log_calls++;
-        pthread_cond_signal(&slh->cond);
-    }
-    pthread_mutex_unlock(&handler->lock);
+    atomic_fetch_add_explicit(&handler->nr_log_calls, 1, memory_order_relaxed);
+    lmk_socket_maybe_wake(slh);
 }
 
 void lmk_socket_log_handler_destroy(struct lmk_log_handler *handler, void *param) {
-    struct lmk_socket_log_handler *slh = (struct lmk_socket_log_handler *) handler;
-    struct lmk_list *cursor;
-    pthread_mutex_lock(&handler->lock);
-    slh->running = 0;
-    pthread_cond_broadcast(&slh->cond);
-    pthread_mutex_unlock(&handler->lock);
+    struct lmk_socket_log_handler *slh = (struct lmk_socket_log_handler *)handler;
+
+    atomic_store_explicit(&slh->running, 0, memory_order_release);
+    pthread_mutex_lock(&slh->wakeup_lock);
+    pthread_cond_broadcast(&slh->wakeup_cond);
+    pthread_mutex_unlock(&slh->wakeup_lock);
     pthread_join(slh->thread, NULL);
-    pthread_cond_destroy(&slh->cond);
-    if (slh->dropped)
+    pthread_cond_destroy(&slh->wakeup_cond);
+    pthread_mutex_destroy(&slh->wakeup_lock);
+
+    unsigned long dropped = atomic_load(&slh->dropped);
+    if (dropped)
         fprintf(stderr, "logmoko: socket handler '%s' dropped %lu log(s), logged %lu\n",
-                handler->name, slh->dropped, handler->nr_log_calls);
+                handler->name, dropped, atomic_load(&handler->nr_log_calls));
     lmk_free(slh->ring_buffer);
     slh->ring_buffer = NULL;
 
     pthread_mutex_lock(&handler->lock);
+    struct lmk_list *cursor;
     LMK_FOR_EACH_ENTRY(&slh->log_server_list, cursor) {
-        struct lmk_log_server *log_server = (struct lmk_log_server *) cursor;
+        struct lmk_log_server *log_server = (struct lmk_log_server *)cursor;
         LMK_SAVE_CURSOR(cursor);
             lmk_remove_list(&log_server->link);
             lmk_free(log_server);
@@ -122,22 +128,21 @@ void lmk_socket_log_handler_destroy(struct lmk_log_handler *handler, void *param
     pthread_mutex_unlock(&handler->lock);
 }
 
-LMK_API void lmk_attach_log_listener(struct lmk_log_handler *handler, const char *host,
-                                     int port) {
+LMK_API void lmk_attach_log_listener(struct lmk_log_handler *handler,
+                                      const char *host, int port) {
     pthread_mutex_lock(&handler->lock);
-    if (handler != NULL && host != NULL && port > 0) {
-        if (handler->type == LMK_LOG_HANDLER_TYPE_SOCKET) {
-            struct lmk_socket_log_handler *slh = (struct lmk_socket_log_handler *) handler;
-            struct lmk_log_server *log_server = NULL;
-            if ((log_server = (struct lmk_log_server *) lmk_malloc(
-                    sizeof(struct lmk_log_server))) != NULL) {
-                memset(log_server, 0, sizeof(struct lmk_log_server));
-                lmk_init_list(&log_server->link);
-                log_server->socket_addr.sin_family = PF_INET;
-                log_server->socket_addr.sin_port = htons(port);
-                inet_pton(PF_INET, host, &log_server->socket_addr.sin_addr);
-                lmk_insert_list(&slh->log_server_list, &log_server->link);
-            }
+    if (handler && host && port > 0 &&
+        handler->type == LMK_LOG_HANDLER_TYPE_SOCKET) {
+        struct lmk_socket_log_handler *slh = (struct lmk_socket_log_handler *)handler;
+        struct lmk_log_server *log_server =
+            (struct lmk_log_server *)lmk_malloc(sizeof(struct lmk_log_server));
+        if (log_server) {
+            memset(log_server, 0, sizeof(struct lmk_log_server));
+            lmk_init_list(&log_server->link);
+            log_server->socket_addr.sin_family = PF_INET;
+            log_server->socket_addr.sin_port   = htons(port);
+            inet_pton(PF_INET, host, &log_server->socket_addr.sin_addr);
+            lmk_insert_list(&slh->log_server_list, &log_server->link);
         }
     }
     pthread_mutex_unlock(&handler->lock);

@@ -204,23 +204,23 @@ LMK_API int lmk_get_handler_log_level(struct lmk_log_handler *handler) {
     return LMK_LOG_LEVEL_UNKNOWN;
 }
 
-static void lmk_default_format(char *out, size_t out_size,
-                                int log_level, const char *level_str,
-                                const char *timestamp,
-                                const char *file_name, int line_no,
-                                const char *handler_name,
-                                const char *message) {
-    snprintf(out, out_size, "[%-5s %s (%s:%d) %s] : %s\n",
-             level_str, timestamp, file_name, line_no, handler_name, message);
-}
-
-static void lmk_simple_format(char *out, size_t out_size,
+static int lmk_default_format(char *out, size_t out_size,
                                int log_level, const char *level_str,
                                const char *timestamp,
                                const char *file_name, int line_no,
                                const char *handler_name,
                                const char *message) {
-    snprintf(out, out_size, "%s [%-5s] %s\n", timestamp, level_str, message);
+    return snprintf(out, out_size, "[%-5s %s (%s:%d) %s] : %s\n",
+                    level_str, timestamp, file_name, line_no, handler_name, message);
+}
+
+static int lmk_simple_format(char *out, size_t out_size,
+                              int log_level, const char *level_str,
+                              const char *timestamp,
+                              const char *file_name, int line_no,
+                              const char *handler_name,
+                              const char *message) {
+    return snprintf(out, out_size, "%s [%-5s] %s\n", timestamp, level_str, message);
 }
 
 static void lmk_json_escape(char *dst, size_t dst_size, const char *src) {
@@ -239,17 +239,18 @@ static void lmk_json_escape(char *dst, size_t dst_size, const char *src) {
     dst[i] = '\0';
 }
 
-static void lmk_json_format(char *out, size_t out_size,
-                              int log_level, const char *level_str,
-                              const char *timestamp,
-                              const char *file_name, int line_no,
-                              const char *handler_name,
-                              const char *message) {
+static int lmk_json_format(char *out, size_t out_size,
+                            int log_level, const char *level_str,
+                            const char *timestamp,
+                            const char *file_name, int line_no,
+                            const char *handler_name,
+                            const char *message) {
     char escaped[1024];
     lmk_json_escape(escaped, sizeof(escaped), message);
-    snprintf(out, out_size,
-             "{\"timestamp\":\"%s\",\"level\":\"%s\",\"file\":\"%s\",\"line\":%d,\"handler\":\"%s\",\"message\":\"%s\"}\n",
-             timestamp, level_str, file_name, line_no, handler_name, escaped);
+    return snprintf(out, out_size,
+                    "{\"timestamp\":\"%s\",\"level\":\"%s\",\"file\":\"%s\","
+                    "\"line\":%d,\"handler\":\"%s\",\"message\":\"%s\"}\n",
+                    timestamp, level_str, file_name, line_no, handler_name, escaped);
 }
 
 lmk_format_fn lmk_get_format_fn(const char *name) {
@@ -262,14 +263,28 @@ lmk_format_fn lmk_get_format_fn(const char *name) {
     return NULL;
 }
 
-void lmk_format_log_line(struct lmk_log_handler *handler, char *out, size_t out_size,
-                          const struct lmk_log_request *req) {
+int lmk_format_log_line(struct lmk_log_handler *handler, char *out, size_t out_size,
+                         const struct lmk_log_request *req) {
     const char *level_str = lmk_get_log_level_str(req->log_level);
-    char ts_buff[LMK_TSTAMP_BUFF_SIZE];
-    lmk_get_timestamp(ts_buff, LMK_TSTAMP_BUFF_SIZE);
+
+    /*
+     * Timestamp cache: time() + localtime_r + strftime runs once per second
+     * per consumer thread instead of once per log line (#2).
+     */
+    static _Thread_local time_t ts_last_sec = 0;
+    static _Thread_local char   ts_cache[LMK_TSTAMP_BUFF_SIZE];
+    time_t now = time(NULL);
+    if (now != ts_last_sec) {
+        struct tm tm_info;
+        localtime_r(&now, &tm_info);
+        strftime(ts_cache, sizeof(ts_cache), "%Y-%m-%d %H:%M:%S", &tm_info);
+        ts_last_sec = now;
+    }
+
     lmk_format_fn fn = handler->format_fn ? handler->format_fn : lmk_default_format;
-    fn(out, out_size, req->log_level, level_str, ts_buff,
-       req->file_name, req->line_no, req->handler_name, req->data);
+    int n = fn(out, out_size, req->log_level, level_str, ts_cache,
+               req->file_name, req->line_no, req->handler_name, req->data);
+    return n > 0 ? (n < (int)out_size ? n : (int)out_size - 1) : 0;
 }
 
 LMK_API void lmk_set_log_format(struct lmk_log_handler *handler, lmk_format_fn fn) {

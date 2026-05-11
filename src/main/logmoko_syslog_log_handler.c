@@ -26,100 +26,109 @@ int lmk_parse_syslog_facility(const char *s) {
     return LOG_USER;
 }
 
+static inline void lmk_syslog_maybe_wake(struct lmk_syslog_log_handler *slh) {
+    atomic_thread_fence(memory_order_seq_cst);
+    if (atomic_load_explicit(&slh->sleeping, memory_order_seq_cst)) {
+        pthread_mutex_lock(&slh->wakeup_lock);
+        pthread_cond_signal(&slh->wakeup_cond);
+        pthread_mutex_unlock(&slh->wakeup_lock);
+    }
+}
+
 static void *lmk_syslog_log_handler_thread_routine(void *arg) {
-    struct lmk_syslog_log_handler *slh = (struct lmk_syslog_log_handler *) arg;
-    int ring_buf_size = lmk_get_config()->ring_buffer_size;
+    struct lmk_syslog_log_handler *slh = (struct lmk_syslog_log_handler *)arg;
 
     while (1) {
-        pthread_mutex_lock(&slh->base.lock);
-        while (slh->count == 0 && slh->running)
-            pthread_cond_wait(&slh->cond, &slh->base.lock);
-        if (slh->count == 0) {
-            pthread_mutex_unlock(&slh->base.lock);
-            break;
+        struct lmk_ring_slot *slot;
+        while ((slot = lmk_ring_peek_slot(slh->ring_buffer, slh->tail, slh->ring_mask))) {
+            syslog(lmk_to_syslog_priority(slot->req.log_level),
+                   "[%s] (%s:%d) %s",
+                   lmk_get_log_level_str(slot->req.log_level),
+                   slot->req.file_name, slot->req.line_no, slot->req.data);
+            lmk_ring_consume(slh->ring_buffer, &slh->tail, slh->ring_mask);
         }
-        struct lmk_log_request *slot = &slh->ring_buffer[slh->tail];
-        pthread_mutex_unlock(&slh->base.lock);
 
-        syslog(lmk_to_syslog_priority(slot->log_level),
-               "[%s] (%s:%d) %s",
-               lmk_get_log_level_str(slot->log_level),
-               slot->file_name, slot->line_no, slot->data);
+        if (!atomic_load_explicit(&slh->running, memory_order_acquire))
+            break;
 
-        pthread_mutex_lock(&slh->base.lock);
-        slh->tail = (slh->tail + 1) % ring_buf_size;
-        slh->count--;
-        pthread_mutex_unlock(&slh->base.lock);
+        pthread_mutex_lock(&slh->wakeup_lock);
+        atomic_store_explicit(&slh->sleeping, 1, memory_order_seq_cst);
+        while (!lmk_ring_peek_slot(slh->ring_buffer, slh->tail, slh->ring_mask) &&
+               atomic_load_explicit(&slh->running, memory_order_relaxed))
+            pthread_cond_wait(&slh->wakeup_cond, &slh->wakeup_lock);
+        atomic_store_explicit(&slh->sleeping, 0, memory_order_relaxed);
+        pthread_mutex_unlock(&slh->wakeup_lock);
     }
     return NULL;
 }
 
 void lmk_syslog_log_handler_init(struct lmk_log_handler *handler, void *param) {
-    struct lmk_syslog_log_handler *slh = (struct lmk_syslog_log_handler *) handler;
+    struct lmk_syslog_log_handler *slh = (struct lmk_syslog_log_handler *)handler;
     pthread_mutex_lock(&handler->lock);
     openlog(slh->ident[0] ? slh->ident : NULL, LOG_PID, slh->facility);
-    slh->ring_buffer = lmk_malloc(sizeof(struct lmk_log_request) * lmk_get_config()->ring_buffer_size);
+
+    size_t ring_size = lmk_next_pow2((size_t)lmk_get_config()->ring_buffer_size);
+    slh->ring_mask   = ring_size - 1;
+    slh->ring_buffer = lmk_malloc(sizeof(struct lmk_ring_slot) * ring_size);
     if (!slh->ring_buffer) {
         fprintf(stderr, "logmoko: unable to allocate syslog handler ring buffer\n");
         closelog();
         pthread_mutex_unlock(&handler->lock);
         return;
     }
-    slh->head = 0;
+    lmk_ring_init(slh->ring_buffer, ring_size);
+    atomic_init(&slh->head, 0);
     slh->tail = 0;
-    slh->count = 0;
-    slh->running = 1;
-    pthread_cond_init(&slh->cond, NULL);
-    if (pthread_create(&slh->thread, NULL, lmk_syslog_log_handler_thread_routine, slh) != 0) {
+    atomic_init(&slh->running, 1);
+    atomic_init(&slh->sleeping, 0);
+    atomic_init(&slh->dropped, 0);
+    pthread_mutex_init(&slh->wakeup_lock, NULL);
+    pthread_cond_init(&slh->wakeup_cond, NULL);
+
+    if (pthread_create(&slh->thread, NULL,
+                       lmk_syslog_log_handler_thread_routine, slh) != 0) {
         fprintf(stderr, "logmoko: unable to create syslog handler thread\n");
         lmk_free(slh->ring_buffer);
         slh->ring_buffer = NULL;
-        slh->running = 0;
+        atomic_store(&slh->running, 0);
         closelog();
-        pthread_mutex_unlock(&handler->lock);
-        return;
+        pthread_cond_destroy(&slh->wakeup_cond);
+        pthread_mutex_destroy(&slh->wakeup_lock);
     }
     pthread_mutex_unlock(&handler->lock);
 }
 
 void lmk_syslog_log_handler_destroy(struct lmk_log_handler *handler, void *param) {
-    struct lmk_syslog_log_handler *slh = (struct lmk_syslog_log_handler *) handler;
-    pthread_mutex_lock(&slh->base.lock);
-    slh->running = 0;
-    pthread_cond_broadcast(&slh->cond);
-    pthread_mutex_unlock(&slh->base.lock);
+    struct lmk_syslog_log_handler *slh = (struct lmk_syslog_log_handler *)handler;
+
+    atomic_store_explicit(&slh->running, 0, memory_order_release);
+    pthread_mutex_lock(&slh->wakeup_lock);
+    pthread_cond_broadcast(&slh->wakeup_cond);
+    pthread_mutex_unlock(&slh->wakeup_lock);
     pthread_join(slh->thread, NULL);
-    pthread_cond_destroy(&slh->cond);
-    if (slh->dropped)
+    pthread_cond_destroy(&slh->wakeup_cond);
+    pthread_mutex_destroy(&slh->wakeup_lock);
+
+    unsigned long dropped = atomic_load(&slh->dropped);
+    if (dropped)
         fprintf(stderr, "logmoko: syslog handler '%s' dropped %lu log(s), logged %lu\n",
-                handler->name, slh->dropped, handler->nr_log_calls);
+                handler->name, dropped, atomic_load(&handler->nr_log_calls));
     lmk_free(slh->ring_buffer);
     slh->ring_buffer = NULL;
     closelog();
 }
 
 void lmk_syslog_log_handler_log_impl(struct lmk_log_handler *handler, void *param) {
-    struct lmk_syslog_log_handler *slh = (struct lmk_syslog_log_handler *) handler;
-    struct lmk_log_record *log_rec = (struct lmk_log_record *) param;
+    struct lmk_syslog_log_handler *slh = (struct lmk_syslog_log_handler *)handler;
+    struct lmk_log_record *rec = (struct lmk_log_record *)param;
 
-    pthread_mutex_lock(&handler->lock);
-    if (slh->count >= lmk_get_config()->ring_buffer_size) {
-        slh->dropped++;
-        pthread_mutex_unlock(&handler->lock);
+    if (!atomic_load_explicit(&slh->running, memory_order_relaxed))
+        return;
+    if (!lmk_ring_enqueue(slh->ring_buffer, &slh->head, slh->ring_mask,
+                          rec, handler->name)) {
+        atomic_fetch_add_explicit(&slh->dropped, 1, memory_order_relaxed);
         return;
     }
-    if (slh->running) {
-        struct lmk_log_request *req = &slh->ring_buffer[slh->head];
-        req->log_level = log_rec->log_level;
-        req->line_no   = log_rec->line_no;
-        strncpy(req->data, log_rec->data, LMK_LOG_MSG_MAX_SIZE - 1);
-        req->data[LMK_LOG_MSG_MAX_SIZE - 1] = '\0';
-        req->file_name = log_rec->file_name;
-        req->handler_name = handler->name;
-        slh->head = (slh->head + 1) % lmk_get_config()->ring_buffer_size;
-        slh->count++;
-        handler->nr_log_calls++;
-        pthread_cond_signal(&slh->cond);
-    }
-    pthread_mutex_unlock(&handler->lock);
+    atomic_fetch_add_explicit(&handler->nr_log_calls, 1, memory_order_relaxed);
+    lmk_syslog_maybe_wake(slh);
 }
