@@ -247,29 +247,47 @@ wakeup signal (only issued when the consumer is actually sleeping).
 The file handler accumulates formatted lines in a staging buffer and issues a single `fwrite`
 per drained batch, which is the primary driver of write throughput under load.
 
-Benchmarked on Apple M-series (macOS 14, `-O2`), 100,000 INFO logs to a file handler:
+Benchmarked on Apple M-series (macOS 14, `-O2`), 100,000 INFO logs to a file handler.
 
 **Enqueue latency — 100K burst (ring=8192, drops expected):**
 
-| Library | Enqueue | Total (+flush) |
-|---|---|---|
-| logmoko | ~62 ms | ~70 ms |
-| spdlog (async) | ~161 ms | ~162 ms |
-| zlog | ~1,990 ms | ~1,990 ms |
-| syslog | ~41 ms | ~41 ms (kernel-buffered, no disk) |
+| Library | Type | Enqueue | Total (+flush) |
+|---|---|---|---|
+| logmoko | async C | ~64 ms | ~71 ms |
+| fmtlog | async C++ | ~2 ms | ~100 ms |
+| quill | async C++ | ~1 ms | ~280 ms |
+| spdlog | async C++ | ~163 ms | ~163 ms |
+| g3log | async C++ | ~166 ms | ~254 ms |
+| syslog | kernel IPC | ~41 ms | ~41 ms |
+| log.c | sync C | ~600 ms | ~600 ms |
+| zlog | sync C | ~2,000 ms | ~2,000 ms |
+| log4c | sync C | ~0.3 ms | ~0.3 ms (stderr, no disk) |
+
+*quill and fmtlog have near-zero enqueue latency; the async backend is the bottleneck on flush.
+spdlog's enqueue time includes internal overflow-policy overhead at this ring size.*
 
 **Full throughput — 100K logs, ring=100000 (zero drops):**
 
 | Library | Total | Throughput |
 |---|---|---|
 | logmoko | ~85 ms | ~1.2M logs/sec |
-| spdlog (async) | ~199 ms | ~500K logs/sec |
-| zlog | ~2,600 ms | ~38K logs/sec |
+| fmtlog | ~108 ms | ~930K logs/sec |
+| spdlog | ~176 ms | ~570K logs/sec |
+| quill | ~300 ms | ~330K logs/sec |
+| g3log | ~255 ms | ~390K logs/sec |
 
 **Sustained rate-limited workload — 200K logs at 400K logs/sec:**
 
-logmoko, spdlog, and syslog all complete in ~500 ms (on schedule). zlog cannot keep up,
-taking ~4,600 ms due to synchronous I/O.
+| Library | Total |
+|---|---|
+| logmoko | ~500 ms (on schedule) |
+| spdlog | ~500 ms (on schedule) |
+| syslog | ~500 ms (on schedule, kernel-buffered) |
+| g3log | ~528 ms |
+| fmtlog | ~560 ms |
+| quill | ~757 ms (backend lagging) |
+| log.c | ~3,100 ms (sync, cannot keep up) |
+| zlog | ~7,300 ms (sync, cannot keep up) |
 
 **Drop-free threshold sweep (ring=8192):**
 
