@@ -161,13 +161,13 @@ lmk_set_log_format(console, NULL);
 
 **Custom format function** — supply any function matching `lmk_format_fn`:
 ```c
-void my_format(char *out, size_t out_size,
-               int log_level, const char *level_str,
-               const char *timestamp,
-               const char *file_name, int line_no,
-               const char *handler_name,
-               const char *message) {
-    snprintf(out, out_size, "%s [%s] %s\n", timestamp, level_str, message);
+int my_format(char *out, size_t out_size,
+              int log_level, const char *level_str,
+              const char *timestamp,
+              const char *file_name, int line_no,
+              const char *handler_name,
+              const char *message) {
+    return snprintf(out, out_size, "%s [%s] %s\n", timestamp, level_str, message);
 }
 
 lmk_set_log_format(console, my_format);
@@ -214,9 +214,10 @@ See the [Logmoko User Guide](docs/logmoko-user-guide.md) for more details.
 ### Thread Safety
 
 All public API functions are thread-safe. Multiple threads can call `LMK_LOG_*` concurrently on
-the same logger; each logger serialises access to its log buffer with a mutex. Handlers are
-protected by their own independent mutex, so multiple loggers can fan out to the same handler
-concurrently without data races.
+the same logger with no locking — each thread formats its message into a thread-local buffer before
+handing it off to the handler's lock-free ring buffer. Handlers are protected by their own
+independent mutex for structural operations only (init/destroy), so multiple loggers can fan out
+to the same handler concurrently without data races.
 
 **What is safe to do concurrently:**
 - Logging via `LMK_LOG_*` on any logger from any number of threads.
@@ -233,53 +234,48 @@ dropped count is printed to stderr when the handler is destroyed.
 
 ### Performance
 
-Logmoko is designed so that log calls never block the application. Each handler runs a dedicated background thread that drains a ring buffer and performs all I/O, so the caller's cost is bounded to a mutex lock, a `strncpy` into the ring buffer slot, a condition signal, and an unlock.
+Logmoko is designed so that log calls never block the application. Each handler runs a dedicated
+background thread that drains a lock-free MPMC ring buffer and performs all I/O. The caller's cost
+is a CAS on the ring head, a `memcpy` of the message into the claimed slot, and a conditional
+wakeup signal (only issued when the consumer is actually sleeping). There is no per-logger mutex on
+the hot path — each thread formats into a thread-local buffer before touching the ring.
 
-Benchmarked on Apple M-series (100,000 INFO logs to a file handler, `-O2`):
+Benchmarked on Apple M-series (macOS 14, Apple Silicon, 100,000 INFO logs to a file handler, `-O2`):
 
 | Scenario | Time | Throughput |
 |---|---|---|
-| Enqueue latency (caller-side only) | ~7 ms | ~14M enqueue attempts/sec |
-| Full throughput — all logs written and flushed to disk | ~66 ms | ~1.5M logs/sec |
+| Enqueue latency (caller-side, ring=8192) | ~60–74 ms | — |
+| Full throughput — all logs written and flushed to disk | ~79–98 ms | ~1M–1.3M logs/sec |
 
-The file handler flushes once per drained batch rather than per line, which is the primary driver of write throughput under load.
+The file handler accumulates formatted lines in a 64 KB staging buffer and issues a single
+`fwrite` per drained batch, which is the primary driver of write throughput under load.
+
+**Drop-free sustained rate (ring=8192, Apple M-series):**
+
+| Rate | Result |
+|---|---|
+| 100k – 1,000,000 logs/sec | Zero drops |
+| 2,000,000 logs/sec | Drops begin |
 
 **Choosing a ring buffer size:**
 
-The ring buffer size (`ring_buffer_size`, default 1024) controls how much burst each handler can absorb before dropping. Logs that arrive when the buffer is full are silently discarded rather than blocking the caller. Each slot holds one formatted message (2 KB), so memory per handler is `ring_buffer_size × 2 KB`.
-
-A sweep across buffer sizes against a 100K-log burst shows the tradeoff clearly:
-
-| `ring_buffer_size` | Memory/handler | Written (burst) |
-|---|---|---|
-| 256 | 512 KB | ~7% |
-| 1024 *(default)* | 2 MB | ~9% |
-| 4096 | 8 MB | ~9% |
-| 32768 | 64 MB | ~39% |
-| 100000 | 195 MB | 100% |
-
-The low write percentages in that table reflect a pathological benchmark — 100K logs fired as fast as possible with no work between them. In a real application the producer is doing actual work between log calls, giving the consumer continuous idle time to drain. At a typical sustained rate the default buffer sees near-zero drops.
+The ring buffer size (`ring_buffer_size`, default 1024) controls how much burst each handler can
+absorb before dropping. Logs that arrive when the buffer is full are discarded rather than blocking
+the caller. Each slot holds one formatted message (2 KB), so memory per handler is
+`ring_buffer_size × 2 KB`.
 
 - **Default (1024)** is a good fit for most workloads.
-- **If you know your burst size**, set `ring_buffer_size` to match it. The buffer will absorb the full burst and the background thread will drain it after the burst subsides.
-- **If you need zero drops under any conditions**, increase the buffer to match your worst-case burst, or use synchronous I/O instead.
+- **If you know your burst size**, set `ring_buffer_size` to match it. The buffer will absorb the
+  full burst and the background thread will drain it after the burst subsides.
+- **If you need zero drops under any conditions**, increase the buffer to match your worst-case
+  burst, or use synchronous I/O instead.
 
-**Sustained throughput limits by ring buffer size:**
-
-Benchmarked on Linux (`-O2`), sustained rate-limited workload (200,000 INFO logs, zero drops threshold):
-
-| `ring_buffer_size` | Memory/handler | Max sustained rate (zero drops) |
-|---|---|---|
-| 1024 *(default)* | 2 MB | ~300k logs/sec |
-| 2048 | 4 MB | ~500k logs/sec |
-| 4096 | 8 MB | ~600k logs/sec |
-
-Above ~600–700k logs/sec, drops occur regardless of ring buffer size — that ceiling is the flush thread's disk write throughput, not the buffer size. Use powers of 2 for `ring_buffer_size`; non-power-of-2 values incur integer division overhead in the hot path and perform worse.
+Use powers of 2 for `ring_buffer_size`; non-power-of-2 values are rounded up internally.
 
 Test machine:
-- **CPU**: Intel Core i7-4770 @ 3.40GHz, 4 cores / 8 threads, 8 MiB L3 cache
-- **Memory**: 16 GB
-- **Disk**: SSD
+- **CPU**: Apple M-series (Apple Silicon)
+- **OS**: macOS 14
+- **Compiler**: `-O2`
 
 
 ### Contributing
