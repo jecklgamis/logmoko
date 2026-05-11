@@ -223,5 +223,23 @@ The low write percentages in that table reflect a pathological benchmark — 100
 - **If you know your burst size**, set `ring_buffer_size` to match it. The buffer will absorb the full burst and the background thread will drain it after the burst subsides.
 - **If you need zero drops under any conditions**, increase the buffer to match your worst-case burst, or use synchronous I/O instead.
 
+**Sustained throughput limits by ring buffer size:**
+
+Benchmarked on Linux (`-O2`), sustained rate-limited workload (200,000 INFO logs, zero drops threshold):
+
+| `ring_buffer_size` | Memory/handler | Max sustained rate (zero drops) |
+|---|---|---|
+| 1024 *(default)* | 2 MB | ~300k logs/sec |
+| 2048 | 4 MB | ~500k logs/sec |
+| 4096 | 8 MB | ~600k logs/sec |
+
+Above ~600–700k logs/sec, drops occur regardless of ring buffer size — that ceiling is the flush thread's disk write throughput, not the buffer size. Use powers of 2 for `ring_buffer_size`; non-power-of-2 values incur integer division overhead in the hot path and perform worse.
+
+Test machine:
+- **CPU**: Intel Core i7-4770 @ 3.40GHz, 4 cores / 8 threads, 8 MiB L3 cache
+- **Memory**: 16 GB
+- **Disk**: SSD
+
+
 ### Contributing
 Please see `CONTRIBUTING.md`
