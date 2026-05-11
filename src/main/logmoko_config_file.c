@@ -15,6 +15,8 @@ struct lmk_cfg_handler {
     char filename[256];
     struct lmk_cfg_listener listeners[LMK_CFG_MAX_LISTENERS];
     int nr_listeners;
+    long max_file_size;
+    int  max_backup_files;
 };
 
 struct lmk_cfg_logger {
@@ -130,6 +132,10 @@ static int lmk_cfg_parse_file(const char *path, struct lmk_cfg *cfg) {
                 cur_handler->level = lmk_cfg_parse_level(val);
             } else if (!strcasecmp(key, "filename")) {
                 strncpy(cur_handler->filename, val, sizeof(cur_handler->filename) - 1);
+            } else if (!strcasecmp(key, "max_file_size")) {
+                cur_handler->max_file_size = atol(val);
+            } else if (!strcasecmp(key, "max_backup_files")) {
+                cur_handler->max_backup_files = atoi(val);
             } else if (!strcasecmp(key, "listener")) {
                 if (cur_handler->nr_listeners < LMK_CFG_MAX_LISTENERS) {
                     char *colon = strrchr(val, ':');
@@ -181,6 +187,11 @@ static void lmk_cfg_apply(const struct lmk_cfg *cfg) {
             handler = lmk_get_console_log_handler();
         } else if (ch->type == LMK_LOG_HANDLER_TYPE_FILE) {
             handler = lmk_get_file_log_handler(ch->name, ch->filename[0] ? ch->filename : NULL);
+            if (handler && (ch->max_file_size > 0 || ch->max_backup_files > 0)) {
+                long sz = ch->max_file_size > 0 ? ch->max_file_size : LMK_DEFAULT_MAX_FILE_SIZE;
+                int  nb = ch->max_backup_files > 0 ? ch->max_backup_files : LMK_DEFAULT_MAX_BACKUP_FILES;
+                lmk_set_log_rotation(handler, sz, nb);
+            }
         } else if (ch->type == LMK_LOG_HANDLER_TYPE_SOCKET) {
             handler = lmk_get_socket_log_handler(ch->name);
             if (handler) {

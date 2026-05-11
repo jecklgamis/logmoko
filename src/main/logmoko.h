@@ -97,13 +97,13 @@ struct lmk_file_log_handler {
     pthread_t thread;
     int running;
     pthread_cond_t cond;
+    long max_file_size;
+    int  max_backup_files;
+    long current_file_size;
 };
 
-enum {
-    LMK_LOG_HANDLER_ATTR_FILENAME,
-    LMK_LOG_HANDLER_ATTR_ROTATING,
-    LMK_LOG_HANDLER_ATTR_ROTATE_INTERVAL,
-};
+#define LMK_DEFAULT_MAX_FILE_SIZE    (20L * 1024 * 1024)
+#define LMK_DEFAULT_MAX_BACKUP_FILES 10
 
 struct lmk_console_log_handler {
     struct lmk_log_handler base;
@@ -200,6 +200,8 @@ extern LMK_API struct lmk_log_handler *lmk_get_file_log_handler(const char *name
 extern LMK_API struct lmk_log_handler *lmk_get_socket_log_handler(const char *name);
 
 extern LMK_API void lmk_set_log_filename(struct lmk_log_handler *handler, const char *filename);
+
+extern LMK_API void lmk_set_log_rotation(struct lmk_log_handler *handler, long max_file_size, int max_backup_files);
 
 extern LMK_API int lmk_attach_log_handler(struct lmk_logger *logger, struct lmk_log_handler *handler);
 

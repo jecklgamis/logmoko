@@ -487,7 +487,7 @@ TMK_TEST(lmk_test_file_write_perf) {
     lmk_attach_log_handler(logger, flh);
     struct timespec start, end;
     clock_gettime(CLOCK_MONOTONIC, &start);
-    int nr_iterations = 100*10000;
+    int nr_iterations = 1000*10000;
     for(int a=0;a <nr_iterations;a++) {
         LMK_LOG_INFO(logger, "This is an info log %d", a);
     }

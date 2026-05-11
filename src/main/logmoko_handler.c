@@ -74,6 +74,8 @@ LMK_API struct lmk_log_handler *lmk_get_file_log_handler(const char *name, const
                                       lmk_file_log_handler_log_impl, name);
             flh->log_fp = NULL;
             flh->filename = filename ? lmk_strdup(filename) : NULL;
+            flh->max_file_size = LMK_DEFAULT_MAX_FILE_SIZE;
+            flh->max_backup_files = LMK_DEFAULT_MAX_BACKUP_FILES;
             lmk_insert_list(&g_lmk_handler_list, &flh->base.link);
             flh->base.init(&flh->base, NULL);
             flh->base.initialized = 1;
