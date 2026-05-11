@@ -19,7 +19,6 @@ include_HEADERS =  \
     logmoko.h \
     logmoko_types.h \
     logmoko_time.h \
-    logmoko_sync.h \
     logmoko_connector.h \
     logmoko_mem.h \
     logmoko_list.h
