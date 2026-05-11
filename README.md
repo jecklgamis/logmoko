@@ -235,27 +235,43 @@ dropped count is printed to stderr when the handler is destroyed.
 ### Performance
 
 Logmoko is designed so that log calls never block the application. Each handler runs a dedicated
-background thread that drains a lock-free MPMC ring buffer and performs all I/O. The caller's cost
+background thread that drains a lock-free ring buffer and performs all I/O. The caller's cost
 is a CAS on the ring head, a `memcpy` of the message into the claimed slot, and a conditional
-wakeup signal (only issued when the consumer is actually sleeping). There is no per-logger mutex on
-the hot path — each thread formats into a thread-local buffer before touching the ring.
+wakeup signal (only issued when the consumer is actually sleeping).
 
-Benchmarked on Apple M-series (macOS 14, Apple Silicon, 100,000 INFO logs to a file handler, `-O2`):
+The file handler accumulates formatted lines in a staging buffer and issues a single `fwrite`
+per drained batch, which is the primary driver of write throughput under load.
 
-| Scenario | Time | Throughput |
+Benchmarked on Apple M-series (macOS 14, `-O2`), 100,000 INFO logs to a file handler:
+
+**Enqueue latency — 100K burst (ring=8192, drops expected):**
+
+| Library | Enqueue | Total (+flush) |
 |---|---|---|
-| Enqueue latency (caller-side, ring=8192) | ~60–74 ms | — |
-| Full throughput — all logs written and flushed to disk | ~79–98 ms | ~1M–1.3M logs/sec |
+| logmoko | ~62 ms | ~70 ms |
+| spdlog (async) | ~161 ms | ~162 ms |
+| zlog | ~1,990 ms | ~1,990 ms |
+| syslog | ~41 ms | ~41 ms (kernel-buffered, no disk) |
 
-The file handler accumulates formatted lines in a 64 KB staging buffer and issues a single
-`fwrite` per drained batch, which is the primary driver of write throughput under load.
+**Full throughput — 100K logs, ring=100000 (zero drops):**
 
-**Drop-free sustained rate (ring=8192, Apple M-series):**
+| Library | Total | Throughput |
+|---|---|---|
+| logmoko | ~85 ms | ~1.2M logs/sec |
+| spdlog (async) | ~199 ms | ~500K logs/sec |
+| zlog | ~2,600 ms | ~38K logs/sec |
 
-| Rate | Result |
+**Sustained rate-limited workload — 200K logs at 400K logs/sec:**
+
+logmoko, spdlog, and syslog all complete in ~500 ms (on schedule). zlog cannot keep up,
+taking ~4,600 ms due to synchronous I/O.
+
+**Drop-free threshold sweep (ring=8192):**
+
+| Rate | logmoko |
 |---|---|
-| 100k – 1,000,000 logs/sec | Zero drops |
-| 2,000,000 logs/sec | Drops begin |
+| 100K – 1M logs/sec | Zero drops |
+| 1.5M+ logs/sec | Drops begin |
 
 **Choosing a ring buffer size:**
 
