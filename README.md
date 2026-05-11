@@ -3,7 +3,7 @@
 ![build](https://github.com/jecklgamis/logmoko/actions/workflows/build.yaml/badge.svg)
 
 Logmoko is a minimal logging framework for C. It supports multiple log levels, named loggers, pluggable handlers,
-asynchronous I/O, log rotation, and INI-based configuration.
+asynchronous I/O, log rotation, syslog, and INI-based configuration.
 
 ### Features
 
@@ -13,6 +13,7 @@ asynchronous I/O, log rotation, and INI-based configuration.
   - Console — writes to stdout
   - File — writes to a file; supports log rotation
   - Socket — sends log records over UDP to one or more remote listeners
+  - Syslog — forwards to the system logger via `syslog(3)`; configurable ident and facility
 - **Log rotation**: file handlers rotate when the log file reaches a configurable size (default 20 MB), keeping up to a configurable number of backup files (default 10)
 - **Async I/O**: each handler runs a background consumer thread with a ring buffer; logs that arrive when the buffer is full are discarded rather than blocking the caller
 - **Custom log format**: supply a function pointer to override the default log line format per handler
@@ -86,9 +87,15 @@ level    = trace
 listener = 127.0.0.1:9000
 format   = json
 
+[handler:syslog]
+type     = syslog
+level    = info
+ident    = myapp
+facility = daemon
+
 [logger:app]
 level    = info
-handlers = console, file, remote
+handlers = console, file, remote, syslog
 ```
 
 Initialise from a config file:
@@ -143,6 +150,33 @@ void my_format(char *out, size_t out_size,
 }
 
 lmk_set_log_format(console, my_format);
+```
+
+### Syslog Handler
+
+Forward logs to the system logger:
+```c
+struct lmk_log_handler *sl = lmk_get_syslog_log_handler("syslog", "myapp", LOG_DAEMON);
+lmk_attach_log_handler(logger, sl);
+```
+
+Logmoko levels map to syslog priorities as follows:
+
+| Logmoko | syslog |
+|---|---|
+| TRACE / DEBUG | `LOG_DEBUG` |
+| INFO | `LOG_INFO` |
+| WARN | `LOG_WARNING` |
+| ERROR | `LOG_ERR` |
+
+On macOS, view output with:
+```
+log show --predicate 'eventMessage contains "myapp"' --last 5m
+```
+
+On Linux:
+```
+journalctl -t myapp
 ```
 
 ### Log Rotation
