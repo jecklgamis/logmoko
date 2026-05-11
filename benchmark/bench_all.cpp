@@ -524,6 +524,129 @@ static void bench_log4c_once(int nr_logs) {
 }
 
 /* ------------------------------------------------------------------ */
+/* multi-threaded producers                                             */
+/* ------------------------------------------------------------------ */
+
+static void bench_spdlog_mt(int nr_threads, int nr_logs) {
+    int per_thread = nr_logs / nr_threads;
+    int total      = per_thread * nr_threads;
+
+    auto logger = make_spdlog("bench_spdlog_mt.log", total,
+                              spdlog::async_overflow_policy::block);
+
+    std::vector<std::thread> threads;
+    double t0 = now_sec();
+    for (int i = 0; i < nr_threads; i++) {
+        threads.emplace_back([&logger, per_thread]() {
+            for (int j = 0; j < per_thread; j++)
+                logger->info("msg {} " MSG_PAD, j);
+        });
+    }
+    for (auto &t : threads) t.join();
+    double enqueue_sec = now_sec() - t0;
+
+    spdlog::shutdown();
+    double total_sec = now_sec() - t0;
+    remove("bench_spdlog_mt.log");
+
+    printf("spdlog  (%2d threads): enqueue %7.3fms  total %7.3fms  throughput ~%.0fK logs/sec\n",
+           nr_threads, enqueue_sec * 1000, total_sec * 1000,
+           total / total_sec / 1000.0);
+}
+
+static void bench_quill_mt(int nr_threads, int nr_logs) {
+    int per_thread = nr_logs / nr_threads;
+    int total      = per_thread * nr_threads;
+
+    quill::BackendOptions bo;
+    quill::Backend::start(bo);
+    auto sink = quill::Frontend::create_or_get_sink<quill::FileSink>(
+        "bench_quill_mt.log",
+        []() { quill::FileSinkConfig cfg; cfg.set_open_mode('w'); return cfg; }(),
+        quill::FileEventNotifier{});
+    auto *logger = quill::Frontend::create_or_get_logger(
+        "bench_mt", std::move(sink),
+        quill::PatternFormatterOptions{"%(message)"});
+    logger->set_log_level(quill::LogLevel::Info);
+
+    std::vector<std::thread> threads;
+    double t0 = now_sec();
+    for (int i = 0; i < nr_threads; i++) {
+        threads.emplace_back([logger, per_thread]() {
+            for (int j = 0; j < per_thread; j++)
+                LOG_INFO(logger, "msg {} " MSG_PAD, j);
+        });
+    }
+    for (auto &t : threads) t.join();
+    double enqueue_sec = now_sec() - t0;
+
+    quill::Backend::stop();
+    double total_sec = now_sec() - t0;
+    remove("bench_quill_mt.log");
+
+    printf("quill   (%2d threads): enqueue %7.3fms  total %7.3fms  throughput ~%.0fK logs/sec\n",
+           nr_threads, enqueue_sec * 1000, total_sec * 1000,
+           total / total_sec / 1000.0);
+}
+
+static void bench_fmtlog_mt(int nr_threads, int nr_logs) {
+    int per_thread = nr_logs / nr_threads;
+    int total      = per_thread * nr_threads;
+
+    fmtlog::setLogFile("bench_fmtlog_mt.log", true);
+    fmtlog::setLogLevel(fmtlog::INF);
+    fmtlog::startPollingThread(1000000);
+
+    std::vector<std::thread> threads;
+    double t0 = now_sec();
+    for (int i = 0; i < nr_threads; i++) {
+        threads.emplace_back([per_thread]() {
+            for (int j = 0; j < per_thread; j++)
+                logi("msg {} " MSG_PAD, j);
+        });
+    }
+    for (auto &t : threads) t.join();
+    double enqueue_sec = now_sec() - t0;
+
+    fmtlog::stopPollingThread();
+    fmtlog::poll(true);
+    double total_sec = now_sec() - t0;
+    remove("bench_fmtlog_mt.log");
+
+    printf("fmtlog  (%2d threads): enqueue %7.3fms  total %7.3fms  throughput ~%.0fK logs/sec\n",
+           nr_threads, enqueue_sec * 1000, total_sec * 1000,
+           total / total_sec / 1000.0);
+}
+
+static void bench_g3log_mt(int nr_threads, int nr_logs) {
+    int per_thread = nr_logs / nr_threads;
+    int total      = per_thread * nr_threads;
+
+    auto logworker = g3::LogWorker::createLogWorker();
+    logworker->addDefaultLogger("bench_g3log_mt", "./");
+    g3::initializeLogging(logworker.get());
+
+    std::vector<std::thread> threads;
+    double t0 = now_sec();
+    for (int i = 0; i < nr_threads; i++) {
+        threads.emplace_back([per_thread]() {
+            for (int j = 0; j < per_thread; j++)
+                LOGF(INFO, "msg %d " MSG_PAD, j);
+        });
+    }
+    for (auto &t : threads) t.join();
+    double enqueue_sec = now_sec() - t0;
+
+    logworker.reset();
+    double total_sec = now_sec() - t0;
+    system("rm -f bench_g3log_mt*.log 2>/dev/null");
+
+    printf("g3log   (%2d threads): enqueue %7.3fms  total %7.3fms  throughput ~%.0fK logs/sec\n",
+           nr_threads, enqueue_sec * 1000, total_sec * 1000,
+           total / total_sec / 1000.0);
+}
+
+/* ------------------------------------------------------------------ */
 /* main                                                                 */
 /* ------------------------------------------------------------------ */
 
@@ -586,6 +709,22 @@ int main() {
     for (int r = 1; r <= 3; r++) { printf("run %d: ", r); bench_syslog_rate_limited(rl_logs, RATE_LIMIT_RPS); }
     printf("\n");
     for (int r = 1; r <= 3; r++) { printf("run %d: ", r); bench_logc_rate_limited(rl_logs, RATE_LIMIT_RPS); }
+    printf("\n");
+
+    /* ---- multi-threaded producers ---- */
+    int mt_logs = 100000;
+    int thread_counts[] = {1, 2, 4, 8};
+    printf("=== Multi-threaded producers — %d total logs, ring=%d (no drops) ===\n\n",
+           mt_logs, mt_logs);
+    for (int tc : thread_counts) bench_logmoko_mt(tc, mt_logs);
+    printf("\n");
+    for (int tc : thread_counts) bench_spdlog_mt(tc, mt_logs);
+    printf("\n");
+    for (int tc : thread_counts) bench_quill_mt(tc, mt_logs);
+    printf("\n");
+    for (int tc : thread_counts) bench_fmtlog_mt(tc, mt_logs);
+    printf("\n");
+    for (int tc : thread_counts) bench_g3log_mt(tc, mt_logs);
     printf("\n");
 
     return 0;

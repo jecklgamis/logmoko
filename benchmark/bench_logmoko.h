@@ -4,5 +4,6 @@
 void bench_logmoko(int nr_logs);
 void bench_logmoko_full(int run, int nr_logs);
 void bench_logmoko_rate_limited(int nr_logs, int rps);
+void bench_logmoko_mt(int nr_threads, int nr_logs);
 
 #endif /* BENCH_LOGMOKO_H */

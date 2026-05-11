@@ -2,6 +2,7 @@
 
 #include <stdio.h>
 #include <time.h>
+#include <pthread.h>
 
 #include "../src/main/logmoko.h"
 
@@ -111,4 +112,56 @@ void bench_logmoko_rate_limited(int nr_logs, int rps) {
 
     printf("logmoko : enqueue %7.3fms  total(+flush) %7.3fms  (%d logs @ %d/sec)\n",
            enqueue_sec * 1000, total_sec * 1000, nr_logs, rps);
+}
+
+/* ------------------------------------------------------------------ */
+/* multi-threaded producer                                              */
+/* ------------------------------------------------------------------ */
+
+struct lmk_mt_args {
+    struct lmk_logger *logger;
+    int nr_logs;
+};
+
+static void *lmk_mt_thread(void *arg) {
+    struct lmk_mt_args *a = (struct lmk_mt_args *)arg;
+    for (int i = 0; i < a->nr_logs; i++)
+        LMK_LOG_INFO(a->logger, "msg %d " MSG_PAD, i);
+    return NULL;
+}
+
+void bench_logmoko_mt(int nr_threads, int nr_logs) {
+    int per_thread = nr_logs / nr_threads;
+    int total      = per_thread * nr_threads;
+
+    lmk_init();
+    lmk_get_config()->ring_buffer_size = (unsigned int)total;
+    struct lmk_logger     *logger = lmk_get_logger("bench");
+    struct lmk_log_handler *fh    = lmk_get_file_log_handler("fh", "bench_logmoko_mt.log");
+    lmk_attach_log_handler(logger, fh);
+    lmk_set_log_level(logger, LMK_LOG_LEVEL_INFO);
+
+    pthread_t          *threads = (pthread_t *)malloc(sizeof(pthread_t) * (size_t)nr_threads);
+    struct lmk_mt_args *args    = (struct lmk_mt_args *)malloc(sizeof(struct lmk_mt_args) * (size_t)nr_threads);
+
+    double t0 = lmk_bench_now_sec();
+    for (int i = 0; i < nr_threads; i++) {
+        args[i].logger  = logger;
+        args[i].nr_logs = per_thread;
+        pthread_create(&threads[i], NULL, lmk_mt_thread, &args[i]);
+    }
+    for (int i = 0; i < nr_threads; i++)
+        pthread_join(threads[i], NULL);
+    double enqueue_sec = lmk_bench_now_sec() - t0;
+
+    lmk_destroy();
+    double total_sec = lmk_bench_now_sec() - t0;
+    remove("bench_logmoko_mt.log");
+
+    free(threads);
+    free(args);
+
+    printf("logmoko (%2d threads): enqueue %7.3fms  total %7.3fms  throughput ~%.0fK logs/sec\n",
+           nr_threads, enqueue_sec * 1000, total_sec * 1000,
+           total / total_sec / 1000.0);
 }

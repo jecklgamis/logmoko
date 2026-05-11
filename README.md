@@ -116,6 +116,20 @@ spdlog's enqueue time includes internal overflow-policy overhead at this ring si
 | log.c | ~3,100 ms (sync, cannot keep up) |
 | zlog | ~7,300 ms (sync, cannot keep up) |
 
+**Multi-threaded producers — 100K total logs, ring=100K (no drops):**
+
+| Library | 1 thread | 2 threads | 4 threads | 8 threads |
+|---|---|---|---|---|
+| logmoko | ~1,280K/sec | ~1,150K/sec | ~1,340K/sec | ~1,260K/sec |
+| fmtlog | ~860K/sec | ~380K/sec | ~370K/sec | ~330K/sec |
+| spdlog | ~435K/sec | ~432K/sec | ~434K/sec | ~377K/sec |
+| g3log | ~350K/sec | ~402K/sec | ~344K/sec | ~358K/sec |
+| quill | ~290K/sec | ~315K/sec | ~299K/sec | ~282K/sec |
+
+logmoko throughput stays flat across thread counts — the MPMC ring buffer scales with producers.
+fmtlog uses per-thread queues and degrades under contention on a single consumer. spdlog, g3log,
+and quill show similar saturation at the single backend thread.
+
 **Drop-free threshold (ring=8192):** zero drops up to ~1M logs/sec; drops begin at ~1.5M logs/sec.
 
 **Choosing a ring buffer size:**
