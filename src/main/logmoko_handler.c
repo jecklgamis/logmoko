@@ -28,7 +28,7 @@ void lmk_init_base_log_handler(struct lmk_log_handler *handler, int type,
         memset(handler, 0, sizeof(struct lmk_log_handler));
         lmk_init_list(&handler->link);
         int name_len = strlen(name);
-        if ((handler->name = lmk_malloc(name_len)) != NULL) {
+        if ((handler->name = lmk_malloc(name_len + 1)) != NULL) {
             strncpy((void *) handler->name, name, name_len);
             handler->name[name_len] = '\0';
         }
@@ -37,7 +37,7 @@ void lmk_init_base_log_handler(struct lmk_log_handler *handler, int type,
         handler->log_impl = log_impl;
         handler->type = type;
         handler->log_level = LMK_LOG_LEVEL_TRACE;
-        LMK_INIT_MUTEX(handler->lock);
+        pthread_mutex_init(&handler->lock, NULL);
     }
 }
 
@@ -127,7 +127,7 @@ int lmk_destroy_log_handler(struct lmk_log_handler **handler_addr) {
     if (handler->name != NULL) {
         lmk_free((void *) handler->name);
     }
-    LMK_DESTROY_MUTEX(handler->lock);
+    pthread_mutex_destroy(&handler->lock);
     lmk_free(handler);
     *handler_addr = NULL;
     return LMK_E_OK;
@@ -147,6 +147,32 @@ LMK_API int lmk_get_handler_log_level(struct lmk_log_handler *handler) {
         return handler->log_level;
     }
     return LMK_LOG_LEVEL_UNKNOWN;
+}
+
+static void lmk_default_format(char *out, size_t out_size,
+                                int log_level, const char *level_str,
+                                const char *timestamp,
+                                const char *file_name, int line_no,
+                                const char *handler_name,
+                                const char *message) {
+    snprintf(out, out_size, "[%-5s %s (%s:%d) %s] : %s\n",
+             level_str, timestamp, file_name, line_no, handler_name, message);
+}
+
+void lmk_format_log_line(struct lmk_log_handler *handler, char *out, size_t out_size,
+                          const struct lmk_log_request *req) {
+    const char *level_str = lmk_get_log_level_str(req->log_level);
+    char ts_buff[LMK_TSTAMP_BUFF_SIZE];
+    lmk_get_timestamp(ts_buff, LMK_TSTAMP_BUFF_SIZE);
+    lmk_format_fn fn = handler->format_fn ? handler->format_fn : lmk_default_format;
+    fn(out, out_size, req->log_level, level_str, ts_buff,
+       req->file_name, req->line_no, req->handler_name, req->data);
+}
+
+LMK_API void lmk_set_log_format(struct lmk_log_handler *handler, lmk_format_fn fn) {
+    if (handler) {
+        handler->format_fn = fn;
+    }
 }
 
 static const char *g_log_hnd_type_str[] = {"CONSOLE", "FILE", "SOCKET"};

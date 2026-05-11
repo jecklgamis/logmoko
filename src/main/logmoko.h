@@ -13,7 +13,6 @@
 
 #include "logmoko_types.h"
 #include "logmoko_time.h"
-#include "logmoko_sync.h"
 #include "logmoko_connector.h"
 #include "logmoko_mem.h"
 
@@ -56,6 +55,13 @@ struct lmk_log_formatter {
     const char *name;
 };
 
+typedef void (*lmk_format_fn)(char *out, size_t out_size,
+                               int log_level, const char *level_str,
+                               const char *timestamp,
+                               const char *file_name, int line_no,
+                               const char *handler_name,
+                               const char *message);
+
 struct lmk_log_handler {
     struct lmk_list link;
     int log_level;
@@ -68,7 +74,8 @@ struct lmk_log_handler {
     unsigned int nr_log_calls;
     unsigned int nr_logger_ref;
     int initialized;
-    lmk_mutex lock;
+    pthread_mutex_t lock;
+    lmk_format_fn format_fn;
 };
 
 typedef void (*lmk_log_handler_function)(struct lmk_log_handler *, void *);
@@ -91,7 +98,7 @@ struct lmk_file_log_handler {
     int count;
     pthread_t thread;
     int running;
-    lmk_cond cond;
+    pthread_cond_t cond;
 };
 
 enum {
@@ -108,7 +115,7 @@ struct lmk_console_log_handler {
     int count;
     pthread_t thread;
     int running;
-    lmk_cond cond;
+    pthread_cond_t cond;
 };
 
 struct lmk_socket_log_handler {
@@ -121,11 +128,7 @@ struct lmk_socket_log_handler {
     int count;
     pthread_t thread;
     int running;
-    lmk_cond cond;
-};
-
-struct lmk_serial_log_handler {
-    struct lmk_log_handler base;
+    pthread_cond_t cond;
 };
 
 #define LMK_LOG_MAX_LOGGER_NAME_SZ 64
@@ -137,7 +140,7 @@ struct lmk_logger {
     struct lmk_list handler_ref_list;
     int initialized;
     char *log_buff;
-    lmk_mutex log_lock;
+    pthread_mutex_t log_lock;
 };
 
 struct lmk_log_handler_ref {
@@ -155,8 +158,6 @@ LMK_API void lmk_log_error(struct lmk_logger *logger, const char *file_name, con
 
 LMK_API void lmk_log_warn(struct lmk_logger *logger, const char *file_name, const int line_no, const char *format, ...);
 
-LMK_API void lmk_log_fatal(struct lmk_logger *logger, const char *file_name, const int line_no, const char *format, ...);
-
 #define LMK_LOG_TRACE(logger, format...) \
     lmk_log_trace(logger, __FILE__, __LINE__, format);
 
@@ -171,9 +172,6 @@ LMK_API void lmk_log_fatal(struct lmk_logger *logger, const char *file_name, con
 
 #define LMK_LOG_ERROR(logger, format...) \
     lmk_log_error(logger, __FILE__, __LINE__, format);
-
-#define LMK_LOG_FATAL(logger, format...) \
-    lmk_log_fatal(logger, __FILE__, __LINE__, format);
 
 #define LMK_IS_LOG_ENABLED(logger_or_handler, level) \
     (level >= (logger_or_handler)->log_level)
@@ -212,6 +210,8 @@ extern LMK_API void lmk_set_handler_log_level(struct lmk_log_handler *handler, i
 extern LMK_API int lmk_get_handler_log_level(struct lmk_log_handler *handler);
 
 extern LMK_API int lmk_destroy_log_handler(struct lmk_log_handler **handler_addr);
+
+extern LMK_API void lmk_set_log_format(struct lmk_log_handler *handler, lmk_format_fn fn);
 
 extern LMK_API int lmk_get_nr_loggers();
 

@@ -22,7 +22,7 @@ LMK_API struct lmk_logger *lmk_get_logger(const char *name) {
     if ((logger = (struct lmk_logger *) lmk_malloc(sizeof(struct lmk_logger))) != NULL) {
         lmk_init_logger(logger);
         int name_len = strlen(name);
-        if ((logger->name = lmk_malloc(name_len)) != NULL) {
+        if ((logger->name = lmk_malloc(name_len + 1)) != NULL) {
             strncpy((void *) logger->name, name, name_len);
             logger->name[name_len] = '\0';
         }
@@ -47,7 +47,7 @@ static int lmk_init_logger(struct lmk_logger *logger) {
         lmk_init_list(&logger->handler_ref_list);
         logger->log_level = LMK_LOG_LEVEL_INFO;
         logger->initialized = 1;
-        LMK_INIT_MUTEX(logger->log_lock);
+        pthread_mutex_init(&logger->log_lock, NULL);
     }
     return LMK_E_OK;
 }
@@ -186,14 +186,14 @@ LMK_API void lmk_log_trace(struct lmk_logger *logger, const char *file_name,
     va_list ap;
     lmk_init();
     if (logger != NULL && LMK_IS_LOG_ENABLED(logger, LMK_LOG_LEVEL_TRACE)) {
-        LMK_LOCK_MUTEX(logger->log_lock);
+        pthread_mutex_lock(&logger->log_lock);
         memset(logger->log_buff, 0, lmk_get_config()->log_buffer_size);
         va_start(ap, format);
-        vsprintf(logger->log_buff, format, ap);
+        vsnprintf(logger->log_buff, lmk_get_config()->log_buffer_size, format, ap);
         va_end(ap);
         lmk_log_impl(logger, file_name, line_no, LMK_LOG_LEVEL_TRACE,
                      logger->log_buff);
-        LMK_UNLOCK_MUTEX(logger->log_lock);
+        pthread_mutex_unlock(&logger->log_lock);
     }
 }
 
@@ -201,15 +201,15 @@ LMK_API void lmk_log_info(struct lmk_logger *logger, const char *file_name,
                           const int line_no, const char *format, ...) {
     lmk_init();
     if (logger != NULL && LMK_IS_LOG_ENABLED(logger, LMK_LOG_LEVEL_INFO)) {
-        LMK_LOCK_MUTEX(logger->log_lock);
+        pthread_mutex_lock(&logger->log_lock);
         va_list ap;
         memset(logger->log_buff, 0, lmk_get_config()->log_buffer_size);
         va_start(ap, format);
-        vsprintf(logger->log_buff, format, ap);
+        vsnprintf(logger->log_buff, lmk_get_config()->log_buffer_size, format, ap);
         va_end(ap);
         lmk_log_impl(logger, file_name, line_no, LMK_LOG_LEVEL_INFO,
                      logger->log_buff);
-        LMK_UNLOCK_MUTEX(logger->log_lock);
+        pthread_mutex_unlock(&logger->log_lock);
     }
 }
 
@@ -218,14 +218,14 @@ LMK_API void lmk_log_debug(struct lmk_logger *logger, const char *file_name,
     va_list ap;
     lmk_init();
     if (logger != NULL && LMK_IS_LOG_ENABLED(logger, LMK_LOG_LEVEL_DEBUG)) {
-        LMK_LOCK_MUTEX(logger->log_lock);
+        pthread_mutex_lock(&logger->log_lock);
         memset(logger->log_buff, 0, lmk_get_config()->log_buffer_size);
         va_start(ap, format);
-        vsprintf(logger->log_buff, format, ap);
+        vsnprintf(logger->log_buff, lmk_get_config()->log_buffer_size, format, ap);
         va_end(ap);
         lmk_log_impl(logger, file_name, line_no, LMK_LOG_LEVEL_DEBUG,
                      logger->log_buff);
-        LMK_UNLOCK_MUTEX(logger->log_lock);
+        pthread_mutex_unlock(&logger->log_lock);
     }
 }
 
@@ -234,14 +234,14 @@ LMK_API void lmk_log_warn(struct lmk_logger *logger, const char *file_name,
     va_list ap;
     lmk_init();
     if (logger != NULL && LMK_IS_LOG_ENABLED(logger, LMK_LOG_LEVEL_WARN)) {
-        LMK_LOCK_MUTEX(logger->log_lock);
+        pthread_mutex_lock(&logger->log_lock);
         memset(logger->log_buff, 0, lmk_get_config()->log_buffer_size);
         va_start(ap, format);
-        vsprintf(logger->log_buff, format, ap);
+        vsnprintf(logger->log_buff, lmk_get_config()->log_buffer_size, format, ap);
         va_end(ap);
         lmk_log_impl(logger, file_name, line_no, LMK_LOG_LEVEL_WARN,
                      logger->log_buff);
-        LMK_UNLOCK_MUTEX(logger->log_lock);
+        pthread_mutex_unlock(&logger->log_lock);
     }
 }
 
@@ -250,14 +250,14 @@ LMK_API void lmk_log_error(struct lmk_logger *logger, const char *file_name,
     va_list ap;
     lmk_init();
     if (logger != NULL && LMK_IS_LOG_ENABLED(logger, LMK_LOG_LEVEL_ERROR)) {
-        LMK_LOCK_MUTEX(logger->log_lock);
+        pthread_mutex_lock(&logger->log_lock);
         memset(logger->log_buff, 0, lmk_get_config()->log_buffer_size);
         va_start(ap, format);
-        vsprintf(logger->log_buff, format, ap);
+        vsnprintf(logger->log_buff, lmk_get_config()->log_buffer_size, format, ap);
         va_end(ap);
         lmk_log_impl(logger, file_name, line_no, LMK_LOG_LEVEL_ERROR,
                      logger->log_buff);
-        LMK_UNLOCK_MUTEX(logger->log_lock);
+        pthread_mutex_unlock(&logger->log_lock);
     }
 }
 
@@ -322,7 +322,6 @@ int lmk_log_impl(struct lmk_logger *logger, const char *file_name, const int lin
 /* Retrieves the named handler attached given logger */
 struct lmk_log_handler *lmk_find_handler(struct lmk_logger *logger, const char *handler_name) {
     struct lmk_list *cursor = NULL;
-    lmk_dump_loggers();
     if (logger != NULL && handler_name != NULL) {
 
         LMK_FOR_EACH_ENTRY(&logger->handler_ref_list, cursor) {

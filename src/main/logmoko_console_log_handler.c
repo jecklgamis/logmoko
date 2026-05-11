@@ -1,29 +1,47 @@
 #include "logmoko.h"
 
+extern void lmk_format_log_line(struct lmk_log_handler *handler, char *out, size_t out_size,
+                                 const struct lmk_log_request *req);
+
 static void *lmk_console_log_handler_thread_routine(void *arg) {
     struct lmk_console_log_handler *clh = (struct lmk_console_log_handler *) arg;
+    int ring_buf_size = lmk_get_config()->ring_buffer_size;
+    struct lmk_log_request *batch = lmk_malloc(ring_buf_size * sizeof(struct lmk_log_request));
+    if (!batch) return NULL;
+
     while (clh->running || clh->count > 0) {
-        struct lmk_log_request *req = NULL;
-        LMK_LOCK_MUTEX(clh->base.lock);
+        int batch_count = 0;
+
+        pthread_mutex_lock(&clh->base.lock);
         while (clh->count == 0 && clh->running) {
-            LMK_WAIT_COND(clh->cond, clh->base.lock);
+            pthread_cond_wait(&clh->cond, &clh->base.lock);
         }
-        if (clh->count > 0) {
-            req = &clh->ring_buffer[clh->tail];
-            const char *level_str = lmk_get_log_level_str(req->log_level);
-            char timestamp[LMK_TSTAMP_BUFF_SIZE];
-            lmk_get_timestamp(timestamp, LMK_TSTAMP_BUFF_SIZE);
-            fprintf(stdout, "[%-5s %s (%s:%d)] : %s\n", level_str, timestamp, req->file_name, req->line_no,
-                    req->data);
-            fflush(stdout);
-            lmk_free(req->data);
-            lmk_free(req->file_name);
-            lmk_free(req->handler_name);
-            clh->tail = (clh->tail + 1) % lmk_get_config()->ring_buffer_size;
+        while (clh->count > 0) {
+            struct lmk_log_request *req = &clh->ring_buffer[clh->tail];
+            batch[batch_count++] = *req;
+            req->data = NULL;
+            req->file_name = NULL;
+            req->handler_name = NULL;
+            clh->tail = (clh->tail + 1) % ring_buf_size;
             clh->count--;
         }
-        LMK_UNLOCK_MUTEX(clh->base.lock);
+        pthread_cond_broadcast(&clh->cond);
+        pthread_mutex_unlock(&clh->base.lock);
+
+        if (batch_count > 0) {
+            size_t buf_size = lmk_get_config()->log_buffer_size;
+            char out[buf_size];
+            for (int i = 0; i < batch_count; i++) {
+                lmk_format_log_line(&clh->base, out, buf_size, &batch[i]);
+                fputs(out, stdout);
+                lmk_free(batch[i].data);
+                lmk_free(batch[i].file_name);
+                lmk_free(batch[i].handler_name);
+            }
+            fflush(stdout);
+        }
     }
+    lmk_free(batch);
     return NULL;
 }
 
@@ -38,26 +56,29 @@ void lmk_console_log_handler_init(struct lmk_log_handler *handler, void *param) 
     clh->tail = 0;
     clh->count = 0;
     clh->running = 1;
-    LMK_INIT_COND(clh->cond);
+    pthread_cond_init(&clh->cond, NULL);
     pthread_create(&clh->thread, NULL, lmk_console_log_handler_thread_routine, clh);
 }
 
 void lmk_console_log_handler_destroy(struct lmk_log_handler *handler, void *param) {
     struct lmk_console_log_handler *clh = (struct lmk_console_log_handler *) handler;
-    LMK_LOCK_MUTEX(clh->base.lock);
+    pthread_mutex_lock(&clh->base.lock);
     clh->running = 0;
-    LMK_SIGNAL_COND(clh->cond);
-    LMK_UNLOCK_MUTEX(clh->base.lock);
+    pthread_cond_broadcast(&clh->cond);
+    pthread_mutex_unlock(&clh->base.lock);
     pthread_join(clh->thread, NULL);
-    LMK_DESTROY_COND(clh->cond);
+    pthread_cond_destroy(&clh->cond);
 }
 
 void lmk_console_log_handler_log_impl(struct lmk_log_handler *handler, void *param) {
     struct lmk_console_log_handler *clh = (struct lmk_console_log_handler *) handler;
     struct lmk_log_record *log_rec = (struct lmk_log_record *) param;
 
-    LMK_LOCK_MUTEX(handler->lock);
-    if (clh->count < lmk_get_config()->ring_buffer_size && clh->running) {
+    pthread_mutex_lock(&handler->lock);
+    while (clh->count >= lmk_get_config()->ring_buffer_size && clh->running) {
+        pthread_cond_wait(&clh->cond, &handler->lock);
+    }
+    if (clh->running) {
         struct lmk_log_request *req = &clh->ring_buffer[clh->head];
         req->log_level = log_rec->log_level;
         req->line_no = log_rec->line_no;
@@ -67,11 +88,7 @@ void lmk_console_log_handler_log_impl(struct lmk_log_handler *handler, void *par
         clh->head = (clh->head + 1) % lmk_get_config()->ring_buffer_size;
         clh->count++;
         handler->nr_log_calls++;
-        LMK_SIGNAL_COND(clh->cond);
-    } else {
-#if LMK_DEBUG
-        fprintf(stderr, "WARNING: Console ring buffer full, dropping log\n");
-#endif
+        pthread_cond_signal(&clh->cond);
     }
-    LMK_UNLOCK_MUTEX(handler->lock);
+    pthread_mutex_unlock(&handler->lock);
 }
