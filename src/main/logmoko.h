@@ -38,7 +38,8 @@ enum {
 enum {
     LMK_LOG_HANDLER_TYPE_CONSOLE = 0,
     LMK_LOG_HANDLER_TYPE_FILE,
-    LMK_LOG_HANDLER_TYPE_SOCKET
+    LMK_LOG_HANDLER_TYPE_SOCKET,
+    LMK_LOG_HANDLER_TYPE_SYSLOG
 };
 
 struct lmk_log_record {
@@ -129,6 +130,19 @@ struct lmk_socket_log_handler {
     pthread_cond_t cond;
 };
 
+struct lmk_syslog_log_handler {
+    struct lmk_log_handler base;
+    char ident[64];
+    int  facility;
+    struct lmk_log_request *ring_buffer;
+    int head;
+    int tail;
+    int count;
+    pthread_t thread;
+    int running;
+    pthread_cond_t cond;
+};
+
 #define LMK_LOG_MAX_LOGGER_NAME_SZ 64
 
 struct lmk_logger {
@@ -198,6 +212,8 @@ extern LMK_API struct lmk_log_handler *lmk_get_console_log_handler();
 extern LMK_API struct lmk_log_handler *lmk_get_file_log_handler(const char *name, const char *filename);
 
 extern LMK_API struct lmk_log_handler *lmk_get_socket_log_handler(const char *name);
+
+extern LMK_API struct lmk_log_handler *lmk_get_syslog_log_handler(const char *name, const char *ident, int facility);
 
 extern LMK_API void lmk_set_log_filename(struct lmk_log_handler *handler, const char *filename);
 

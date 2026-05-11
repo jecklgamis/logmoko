@@ -9,6 +9,7 @@ liblogmoko_a_SOURCES = \
     logmoko_console_log_handler.c \
     logmoko_file_log_handler.c \
     logmoko_socket_log_handler.c \
+    logmoko_syslog_log_handler.c \
     logmoko_time.c \
     logmoko_config.c \
     logmoko_config_file.c \

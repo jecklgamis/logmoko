@@ -18,6 +18,12 @@ extern void lmk_console_log_handler_destroy(struct lmk_log_handler *handler, voi
 
 extern void lmk_console_log_handler_log_impl(struct lmk_log_handler *handler, void *param);
 
+extern void lmk_syslog_log_handler_init(struct lmk_log_handler *handler, void *param);
+
+extern void lmk_syslog_log_handler_destroy(struct lmk_log_handler *handler, void *param);
+
+extern void lmk_syslog_log_handler_log_impl(struct lmk_log_handler *handler, void *param);
+
 extern struct lmk_list g_lmk_handler_list;
 
 void lmk_init_base_log_handler(struct lmk_log_handler *handler, int type,
@@ -97,6 +103,29 @@ LMK_API struct lmk_log_handler *lmk_get_socket_log_handler(const char *name) {
             lmk_init_base_log_handler(&slh->base, LMK_LOG_HANDLER_TYPE_SOCKET,
                                       lmk_socket_log_handler_init, lmk_socket_log_handler_destroy,
                                       lmk_socket_log_handler_log_impl, name);
+            lmk_insert_list(&g_lmk_handler_list, &slh->base.link);
+            slh->base.init(&slh->base, NULL);
+            slh->base.initialized = 1;
+        }
+    }
+    return ((struct lmk_log_handler *) slh);
+}
+
+LMK_API struct lmk_log_handler *lmk_get_syslog_log_handler(const char *name, const char *ident, int facility) {
+    struct lmk_syslog_log_handler *slh = NULL;
+    struct lmk_log_handler *handler;
+    lmk_init();
+    if (name != NULL) {
+        if ((handler = lmk_search_log_handler_by_name(name)) != NULL)
+            return handler;
+        if ((slh = (struct lmk_syslog_log_handler *) lmk_malloc(
+                sizeof(struct lmk_syslog_log_handler))) != NULL) {
+            lmk_init_base_log_handler(&slh->base, LMK_LOG_HANDLER_TYPE_SYSLOG,
+                                      lmk_syslog_log_handler_init, lmk_syslog_log_handler_destroy,
+                                      lmk_syslog_log_handler_log_impl, name);
+            if (ident)
+                strncpy(slh->ident, ident, sizeof(slh->ident) - 1);
+            slh->facility = facility;
             lmk_insert_list(&g_lmk_handler_list, &slh->base.link);
             slh->base.init(&slh->base, NULL);
             slh->base.initialized = 1;
@@ -224,7 +253,7 @@ LMK_API void lmk_set_log_format(struct lmk_log_handler *handler, lmk_format_fn f
     }
 }
 
-static const char *g_log_hnd_type_str[] = {"CONSOLE", "FILE", "SOCKET"};
+static const char *g_log_hnd_type_str[] = {"CONSOLE", "FILE", "SOCKET", "SYSLOG"};
 
 const char *lmk_get_log_handler_type_str(int type) {
     const char *type_str = "UNKNOWN";
