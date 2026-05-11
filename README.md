@@ -130,6 +130,38 @@ logmoko throughput stays flat across thread counts — the MPMC ring buffer scal
 fmtlog uses per-thread queues and degrades under contention on a single consumer. spdlog, g3log,
 and quill show similar saturation at the single backend thread.
 
+**Per-call enqueue latency — 100K logs, ring=100K (no drops):**
+
+| Library | msg | p50 | p99 | p999 | max |
+|---|---|---|---|---|---|
+| logmoko | long | ~1 µs | ~1 µs | ~1 µs | ~19 µs |
+| logmoko | short | <1 µs | ~1 µs | ~1 µs | ~3 µs |
+| quill | both | <1 µs | <1 µs | ~1 µs | ~3 µs |
+| fmtlog | both | <1 µs | <1 µs | ~1 µs | ~4 µs |
+| spdlog | long | ~2 µs | ~3 µs | ~5 µs | ~37 µs |
+| spdlog | short | <1 µs | ~1 µs | ~3 µs | ~11 µs |
+| g3log | long | ~2 µs | ~4 µs | ~10 µs | ~54 µs |
+| syslog | short | <1 µs | ~1 µs | ~3 µs | ~3,722 µs |
+
+*Values below 1 µs appear as 0 (macOS `CLOCK_MONOTONIC` resolution). The syslog max of 3.7 ms
+is a kernel scheduling outlier, not typical cost.*
+
+**Short (~62 B) vs long (~2 KB) message throughput:**
+
+| Library | Long | Short | Speedup |
+|---|---|---|---|
+| logmoko | ~1.4M/sec | ~3.3M/sec | 2.4× |
+| fmtlog | ~700K/sec | ~4.4M/sec | 6.3× |
+| spdlog | ~560K/sec | ~5.3M/sec | 9.5× |
+| quill | ~370K/sec | ~4.6M/sec | 12× |
+| g3log | ~245K/sec | ~750K/sec | 3.1× |
+
+logmoko formats on the producer thread (vsnprintf + memcpy into the ring slot), so its throughput
+scales with message length. quill and fmtlog defer formatting to the background thread; their
+enqueue cost is nearly message-size-independent, but the backend serialization shows up in total
+time. The result: logmoko has the smallest long-vs-short gap because its bottleneck is the
+formatting step, not I/O.
+
 **Drop-free threshold (ring=8192):** zero drops up to ~1M logs/sec; drops begin at ~1.5M logs/sec.
 
 **Choosing a ring buffer size:**

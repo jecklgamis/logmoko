@@ -56,6 +56,7 @@ extern "C" {
 #define NR_LOGS        100000
 #define LMK_RING_SZ    8192
 #define RATE_LIMIT_RPS 400000
+#define MSG_SHORT      "user=12345 action=login status=200 duration=42ms ip=192.168.1.1"
 
 #define MSG_PAD \
     "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX" \
@@ -524,6 +525,205 @@ static void bench_log4c_once(int nr_logs) {
 }
 
 /* ------------------------------------------------------------------ */
+/* latency + short-message helpers                                      */
+/* ------------------------------------------------------------------ */
+
+static void print_latency(const char *lib, const char *msg, std::vector<double> &s) {
+    std::sort(s.begin(), s.end());
+    size_t n = s.size();
+    auto us = [&](double p) { return s[(size_t)(p * n)] * 1e6; };
+    printf("%-8s %-6s  min=%5.2fus  p50=%5.2fus  p95=%5.2fus  p99=%5.2fus  p999=%6.2fus  max=%7.2fus\n",
+           lib, msg, us(0), us(0.50), us(0.95), us(0.99), us(0.999), s.back() * 1e6);
+}
+
+/* ------------------------------------------------------------------ */
+/* spdlog latency + short                                               */
+/* ------------------------------------------------------------------ */
+
+static void bench_spdlog_latency(int nr_logs) {
+    std::vector<double> samples((size_t)nr_logs);
+
+    for (const char *msg_label : {"long ", "short"}) {
+        bool is_short = (msg_label[0] == 's');
+        auto logger = make_spdlog("bench_spdlog_lat.log", nr_logs,
+                                  spdlog::async_overflow_policy::block);
+        for (int i = 0; i < nr_logs; i++) {
+            double t0 = now_sec();
+            if (is_short) logger->info(MSG_SHORT);
+            else          logger->info("msg {} " MSG_PAD, i);
+            samples[(size_t)i] = now_sec() - t0;
+        }
+        spdlog::shutdown();
+        remove("bench_spdlog_lat.log");
+        print_latency("spdlog", msg_label, samples);
+    }
+}
+
+static void bench_spdlog_short(int run, int nr_logs) {
+    auto logger = make_spdlog("bench_spdlog_short.log", nr_logs,
+                              spdlog::async_overflow_policy::block);
+    double t0 = now_sec();
+    for (int i = 0; i < nr_logs; i++)
+        logger->info(MSG_SHORT);
+    spdlog::shutdown();
+    double elapsed = now_sec() - t0;
+    remove("bench_spdlog_short.log");
+    printf("spdlog  short run %d: %7.3fms  (%d logs, ~%.0fK/sec)\n",
+           run, elapsed * 1000, nr_logs, nr_logs / elapsed / 1000.0);
+}
+
+/* ------------------------------------------------------------------ */
+/* quill latency + short                                                */
+/* ------------------------------------------------------------------ */
+
+static void bench_quill_latency(int nr_logs) {
+    std::vector<double> samples((size_t)nr_logs);
+
+    for (const char *msg_label : {"long ", "short"}) {
+        bool is_short = (msg_label[0] == 's');
+        quill::BackendOptions bo;
+        quill::Backend::start(bo);
+        std::string lname = std::string("bench_lat_") + msg_label;
+        auto sink = quill::Frontend::create_or_get_sink<quill::FileSink>(
+            "bench_quill_lat.log",
+            []() { quill::FileSinkConfig c; c.set_open_mode('w'); return c; }(),
+            quill::FileEventNotifier{});
+        auto *logger = quill::Frontend::create_or_get_logger(
+            lname, std::move(sink), quill::PatternFormatterOptions{"%(message)"});
+        logger->set_log_level(quill::LogLevel::Info);
+
+        for (int i = 0; i < nr_logs; i++) {
+            double t0 = now_sec();
+            if (is_short) LOG_INFO(logger, MSG_SHORT);
+            else          LOG_INFO(logger, "msg {} " MSG_PAD, i);
+            samples[(size_t)i] = now_sec() - t0;
+        }
+        quill::Backend::stop();
+        remove("bench_quill_lat.log");
+        print_latency("quill", msg_label, samples);
+    }
+}
+
+static void bench_quill_short(int run, int nr_logs) {
+    quill::BackendOptions bo;
+    quill::Backend::start(bo);
+    auto sink = quill::Frontend::create_or_get_sink<quill::FileSink>(
+        "bench_quill_short.log",
+        []() { quill::FileSinkConfig c; c.set_open_mode('w'); return c; }(),
+        quill::FileEventNotifier{});
+    auto *logger = quill::Frontend::create_or_get_logger(
+        "bench_short", std::move(sink), quill::PatternFormatterOptions{"%(message)"});
+    logger->set_log_level(quill::LogLevel::Info);
+
+    double t0 = now_sec();
+    for (int i = 0; i < nr_logs; i++)
+        LOG_INFO(logger, MSG_SHORT);
+    quill::Backend::stop();
+    double elapsed = now_sec() - t0;
+    remove("bench_quill_short.log");
+    printf("quill   short run %d: %7.3fms  (%d logs, ~%.0fK/sec)\n",
+           run, elapsed * 1000, nr_logs, nr_logs / elapsed / 1000.0);
+}
+
+/* ------------------------------------------------------------------ */
+/* fmtlog latency + short                                               */
+/* ------------------------------------------------------------------ */
+
+static void bench_fmtlog_latency(int nr_logs) {
+    std::vector<double> samples((size_t)nr_logs);
+
+    for (const char *msg_label : {"long ", "short"}) {
+        bool is_short = (msg_label[0] == 's');
+        fmtlog::setLogFile("bench_fmtlog_lat.log", true);
+        fmtlog::setLogLevel(fmtlog::INF);
+        fmtlog::startPollingThread(1000000);
+
+        for (int i = 0; i < nr_logs; i++) {
+            double t0 = now_sec();
+            if (is_short) logi(MSG_SHORT);
+            else          logi("msg {} " MSG_PAD, i);
+            samples[(size_t)i] = now_sec() - t0;
+        }
+        fmtlog::stopPollingThread();
+        fmtlog::poll(true);
+        remove("bench_fmtlog_lat.log");
+        print_latency("fmtlog", msg_label, samples);
+    }
+}
+
+static void bench_fmtlog_short(int run, int nr_logs) {
+    fmtlog::setLogFile("bench_fmtlog_short.log", true);
+    fmtlog::setLogLevel(fmtlog::INF);
+    fmtlog::startPollingThread(1000000);
+
+    double t0 = now_sec();
+    for (int i = 0; i < nr_logs; i++)
+        logi(MSG_SHORT);
+    fmtlog::stopPollingThread();
+    fmtlog::poll(true);
+    double elapsed = now_sec() - t0;
+    remove("bench_fmtlog_short.log");
+    printf("fmtlog  short run %d: %7.3fms  (%d logs, ~%.0fK/sec)\n",
+           run, elapsed * 1000, nr_logs, nr_logs / elapsed / 1000.0);
+}
+
+/* ------------------------------------------------------------------ */
+/* g3log latency + short                                                */
+/* ------------------------------------------------------------------ */
+
+static void bench_g3log_latency(int nr_logs) {
+    std::vector<double> samples((size_t)nr_logs);
+
+    for (const char *msg_label : {"long ", "short"}) {
+        bool is_short = (msg_label[0] == 's');
+        auto logworker = g3::LogWorker::createLogWorker();
+        logworker->addDefaultLogger("bench_g3log_lat", "./");
+        g3::initializeLogging(logworker.get());
+
+        for (int i = 0; i < nr_logs; i++) {
+            double t0 = now_sec();
+            if (is_short) LOGF(INFO, MSG_SHORT);
+            else          LOGF(INFO, "msg %d " MSG_PAD, i);
+            samples[(size_t)i] = now_sec() - t0;
+        }
+        logworker.reset();
+        system("rm -f bench_g3log_lat*.log 2>/dev/null");
+        print_latency("g3log", msg_label, samples);
+    }
+}
+
+static void bench_g3log_short(int run, int nr_logs) {
+    auto logworker = g3::LogWorker::createLogWorker();
+    logworker->addDefaultLogger("bench_g3log_short", "./");
+    g3::initializeLogging(logworker.get());
+
+    double t0 = now_sec();
+    for (int i = 0; i < nr_logs; i++)
+        LOGF(INFO, MSG_SHORT);
+    logworker.reset();
+    double elapsed = now_sec() - t0;
+    system("rm -f bench_g3log_short*.log 2>/dev/null");
+    printf("g3log   short run %d: %7.3fms  (%d logs, ~%.0fK/sec)\n",
+           run, elapsed * 1000, nr_logs, nr_logs / elapsed / 1000.0);
+}
+
+/* ------------------------------------------------------------------ */
+/* syslog latency (sync, included for contrast)                         */
+/* ------------------------------------------------------------------ */
+
+static void bench_syslog_latency(int nr_logs) {
+    std::vector<double> samples((size_t)nr_logs);
+    openlog("bench", LOG_NDELAY, LOG_USER);
+    for (int i = 0; i < nr_logs; i++) {
+        double t0 = now_sec();
+        syslog(LOG_INFO, MSG_SHORT);
+        samples[(size_t)i] = now_sec() - t0;
+    }
+    closelog();
+    print_latency("syslog", "short", samples);
+}
+
+/* ------------------------------------------------------------------ */
 /* multi-threaded producers                                             */
 /* ------------------------------------------------------------------ */
 
@@ -709,6 +909,45 @@ int main() {
     for (int r = 1; r <= 3; r++) { printf("run %d: ", r); bench_syslog_rate_limited(rl_logs, RATE_LIMIT_RPS); }
     printf("\n");
     for (int r = 1; r <= 3; r++) { printf("run %d: ", r); bench_logc_rate_limited(rl_logs, RATE_LIMIT_RPS); }
+    printf("\n");
+
+    /* ---- per-call tail latency ---- */
+    printf("=== Per-call enqueue latency — %d logs, ring=%d (no drops) ===\n\n", NR_LOGS, NR_LOGS);
+    bench_logmoko_latency(NR_LOGS);
+    printf("\n");
+    bench_spdlog_latency(NR_LOGS);
+    printf("\n");
+    bench_quill_latency(NR_LOGS);
+    printf("\n");
+    bench_fmtlog_latency(NR_LOGS);
+    printf("\n");
+    bench_g3log_latency(NR_LOGS);
+    printf("\n");
+    bench_syslog_latency(NR_LOGS);
+    printf("\n");
+
+    /* ---- short vs long message throughput ---- */
+    printf("=== Short vs long message — %d logs, ring=%d (no drops) ===\n\n", NR_LOGS, NR_LOGS);
+    printf("--- long message (~2KB) ---\n");
+    for (int r = 1; r <= 3; r++) bench_logmoko_full(r, NR_LOGS);
+    printf("\n");
+    for (int r = 1; r <= 3; r++) bench_spdlog_full(r, NR_LOGS);
+    printf("\n");
+    for (int r = 1; r <= 3; r++) bench_quill_full(r, NR_LOGS);
+    printf("\n");
+    for (int r = 1; r <= 3; r++) bench_fmtlog_full(r, NR_LOGS);
+    printf("\n");
+    for (int r = 1; r <= 3; r++) bench_g3log_full(r, NR_LOGS);
+    printf("\n--- short message (~62 bytes) ---\n");
+    for (int r = 1; r <= 3; r++) bench_logmoko_short(r, NR_LOGS);
+    printf("\n");
+    for (int r = 1; r <= 3; r++) bench_spdlog_short(r, NR_LOGS);
+    printf("\n");
+    for (int r = 1; r <= 3; r++) bench_quill_short(r, NR_LOGS);
+    printf("\n");
+    for (int r = 1; r <= 3; r++) bench_fmtlog_short(r, NR_LOGS);
+    printf("\n");
+    for (int r = 1; r <= 3; r++) bench_g3log_short(r, NR_LOGS);
     printf("\n");
 
     /* ---- multi-threaded producers ---- */

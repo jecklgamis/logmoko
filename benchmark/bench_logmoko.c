@@ -1,6 +1,7 @@
 /* logmoko benchmark routines — compiled as C to avoid C11/C++ atomic incompatibility */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <time.h>
 #include <pthread.h>
 
@@ -164,4 +165,90 @@ void bench_logmoko_mt(int nr_threads, int nr_logs) {
     printf("logmoko (%2d threads): enqueue %7.3fms  total %7.3fms  throughput ~%.0fK logs/sec\n",
            nr_threads, enqueue_sec * 1000, total_sec * 1000,
            total / total_sec / 1000.0);
+}
+
+/* ------------------------------------------------------------------ */
+/* per-call tail latency                                                */
+/* ------------------------------------------------------------------ */
+
+#define MSG_SHORT "user=12345 action=login status=200 duration=42ms ip=192.168.1.1"
+
+static int lmk_cmp_double(const void *a, const void *b) {
+    double x = *(const double *)a, y = *(const double *)b;
+    return (x > y) - (x < y);
+}
+
+static void lmk_print_latency(const char *name, double *s, int n) {
+    qsort(s, (size_t)n, sizeof(double), lmk_cmp_double);
+    printf("logmoko %-6s  min=%5.2fus  p50=%5.2fus  p95=%5.2fus  p99=%5.2fus  p999=%6.2fus  max=%7.2fus\n",
+           name,
+           s[0]              * 1e6,
+           s[(int)(0.500*n)] * 1e6,
+           s[(int)(0.950*n)] * 1e6,
+           s[(int)(0.990*n)] * 1e6,
+           s[(int)(0.999*n)] * 1e6,
+           s[n-1]            * 1e6);
+}
+
+void bench_logmoko_latency(int nr_logs) {
+    double *samples = (double *)malloc(sizeof(double) * (size_t)nr_logs);
+
+    /* ---- long message ---- */
+    lmk_init();
+    lmk_get_config()->ring_buffer_size = (unsigned int)nr_logs;
+    struct lmk_logger     *logger = lmk_get_logger("bench");
+    struct lmk_log_handler *fh    = lmk_get_file_log_handler("fh", "bench_logmoko_lat.log");
+    lmk_attach_log_handler(logger, fh);
+    lmk_set_log_level(logger, LMK_LOG_LEVEL_INFO);
+
+    for (int i = 0; i < nr_logs; i++) {
+        double t0 = lmk_bench_now_sec();
+        LMK_LOG_INFO(logger, "msg %d " MSG_PAD, i);
+        samples[i] = lmk_bench_now_sec() - t0;
+    }
+    lmk_destroy();
+    remove("bench_logmoko_lat.log");
+    lmk_print_latency("long ", samples, nr_logs);
+
+    /* ---- short message ---- */
+    lmk_init();
+    lmk_get_config()->ring_buffer_size = (unsigned int)nr_logs;
+    logger = lmk_get_logger("bench");
+    fh     = lmk_get_file_log_handler("fh", "bench_logmoko_lat_s.log");
+    lmk_attach_log_handler(logger, fh);
+    lmk_set_log_level(logger, LMK_LOG_LEVEL_INFO);
+
+    for (int i = 0; i < nr_logs; i++) {
+        double t0 = lmk_bench_now_sec();
+        LMK_LOG_INFO(logger, MSG_SHORT);
+        samples[i] = lmk_bench_now_sec() - t0;
+    }
+    lmk_destroy();
+    remove("bench_logmoko_lat_s.log");
+    lmk_print_latency("short", samples, nr_logs);
+
+    free(samples);
+}
+
+/* ------------------------------------------------------------------ */
+/* short message throughput                                             */
+/* ------------------------------------------------------------------ */
+
+void bench_logmoko_short(int run, int nr_logs) {
+    lmk_init();
+    lmk_get_config()->ring_buffer_size = (unsigned int)nr_logs;
+    struct lmk_logger     *logger = lmk_get_logger("bench");
+    struct lmk_log_handler *fh    = lmk_get_file_log_handler("fh", "bench_logmoko_short.log");
+    lmk_attach_log_handler(logger, fh);
+    lmk_set_log_level(logger, LMK_LOG_LEVEL_INFO);
+
+    double t0 = lmk_bench_now_sec();
+    for (int i = 0; i < nr_logs; i++)
+        LMK_LOG_INFO(logger, MSG_SHORT);
+    lmk_destroy();
+    double elapsed = lmk_bench_now_sec() - t0;
+    remove("bench_logmoko_short.log");
+
+    printf("logmoko short run %d: %7.3fms  (%d logs, ~%.0fK/sec)\n",
+           run, elapsed * 1000, nr_logs, nr_logs / elapsed / 1000.0);
 }
