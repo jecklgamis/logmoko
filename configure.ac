@@ -25,9 +25,14 @@ AC_PROG_CC
 # Checks for libraries.
 AC_PROG_RANLIB
 AC_SEARCH_LIBS([pthread_create],[pthread],,[AC_MSG_ERROR([Unable to find pthread library])])
+AC_SEARCH_LIBS([socket],[socket nsl],,[AC_MSG_ERROR([Unable to find socket library])])
+AC_SEARCH_LIBS([inet_pton],[nsl socket],,[AC_MSG_ERROR([Unable to find inet_pton])])
+AC_SEARCH_LIBS([openlog],[],,[AC_MSG_ERROR([Unable to find syslog functions])])
 
 # Checks for header files.
-AC_CHECK_HEADERS([stdio.h stdlib.h string.h inttypes.h stdint.h strings.h sys/stat.h sys/types.h unistd.h setjmp.h time.h stdarg.h pthread.h])
+AC_CHECK_HEADERS([stdio.h stdlib.h string.h inttypes.h stdint.h strings.h \
+    sys/stat.h sys/types.h sys/socket.h netinet/in.h arpa/inet.h \
+    unistd.h setjmp.h time.h stdarg.h pthread.h syslog.h ctype.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST
@@ -40,7 +45,8 @@ AC_CHECK_SIZEOF(void*)
 AC_FUNC_MALLOC
 
 # Checks for functions
-#AC_CHECK_FUNCS()
+AC_CHECK_FUNCS([socket sendto inet_pton inet_ntop openlog syslog closelog \
+    pthread_create pthread_mutex_init strtok_r])
 
 # Configuration files
 AC_CONFIG_FILES([Makefile src/main/Makefile src/test/Makefile src/examples/Makefile docs/Makefile])
