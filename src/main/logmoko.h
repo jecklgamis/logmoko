@@ -262,7 +262,7 @@ extern struct lmk_config *lmk_get_config();
 #define LMK_CFG_MAX_LOGGERS             64
 #define LMK_CFG_MAX_HANDLERS_PER_LOGGER 16
 #define LMK_CFG_LINE_MAX                512
-#define LMK_CFG_DEFAULT_RING_BUFFER_SIZE 256
+#define LMK_CFG_DEFAULT_RING_BUFFER_SIZE 1024
 #define LMK_CFG_DEFAULT_LOG_BUFFER_SIZE  2048
 
 #endif /* LOGMOKO_H */
