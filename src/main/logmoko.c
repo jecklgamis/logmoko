@@ -4,6 +4,7 @@ static const char *g_log_level_str[] = {"TRACE", "DEBUG", "INFO", "WARN", "ERROR
 struct lmk_list g_lmk_logger_list;
 struct lmk_list g_lmk_handler_list;
 static int g_lmk_initialized = 0;
+static pthread_mutex_t g_lmk_init_mutex = PTHREAD_MUTEX_INITIALIZER;
 struct lmk_config *g_lmk_config = NULL;
 
 const char *lmk_get_log_level_str(int log_level);
@@ -19,23 +20,26 @@ struct lmk_config *lmk_get_config() {
 }
 
 void lmk_init() {
+    if (g_lmk_initialized)
+        return;
+    pthread_mutex_lock(&g_lmk_init_mutex);
     if (!g_lmk_initialized) {
         lmk_init_list(&g_lmk_logger_list);
         lmk_init_list(&g_lmk_handler_list);
         g_lmk_config = lmk_create_config();
         if (!g_lmk_config) {
             fprintf(stderr, "Unable to initialize\n");
+            pthread_mutex_unlock(&g_lmk_init_mutex);
             return;
         }
         g_lmk_initialized = 1;
         lmk_apply_auto_config();
-        if (g_lmk_config->log_buffer_size <= 0 ) {
+        if (g_lmk_config->log_buffer_size <= 0)
             g_lmk_config->log_buffer_size = LMK_CFG_DEFAULT_LOG_BUFFER_SIZE;
-        }
-        if (g_lmk_config->ring_buffer_size <= 0 ) {
+        if (g_lmk_config->ring_buffer_size <= 0)
             g_lmk_config->ring_buffer_size = LMK_CFG_DEFAULT_RING_BUFFER_SIZE;
-        }
     }
+    pthread_mutex_unlock(&g_lmk_init_mutex);
 }
 
 LMK_API void lmk_destroy() {

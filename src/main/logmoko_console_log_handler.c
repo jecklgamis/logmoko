@@ -36,9 +36,8 @@ static void *lmk_console_log_handler_thread_routine(void *arg) {
         struct lmk_log_request *slot = &clh->ring_buffer[clh->tail];
         pthread_mutex_unlock(&clh->base.lock);
 
-        size_t buf_size = lmk_get_config()->log_buffer_size;
-        char out[buf_size];
-        lmk_format_log_line(&clh->base, out, buf_size, slot);
+        char out[LMK_CFG_DEFAULT_LOG_BUFFER_SIZE];
+        lmk_format_log_line(&clh->base, out, sizeof(out), slot);
         fputs(lmk_console_level_color(slot->log_level), stdout);
         fputs(out, stdout);
         fputs(ANSI_RESET, stdout);
@@ -56,7 +55,7 @@ void lmk_console_log_handler_init(struct lmk_log_handler *handler, void *param) 
     struct lmk_console_log_handler *clh = (struct lmk_console_log_handler *) handler;
     clh->ring_buffer = lmk_malloc(sizeof(struct lmk_log_request) * lmk_get_config()->ring_buffer_size);
     if (!clh->ring_buffer) {
-        fprintf(stderr, "Unable to allocate ring buffer");
+        fprintf(stderr, "logmoko: unable to allocate console ring buffer\n");
         return;
     }
     clh->head = 0;
@@ -64,7 +63,13 @@ void lmk_console_log_handler_init(struct lmk_log_handler *handler, void *param) 
     clh->count = 0;
     clh->running = 1;
     pthread_cond_init(&clh->cond, NULL);
-    pthread_create(&clh->thread, NULL, lmk_console_log_handler_thread_routine, clh);
+    if (pthread_create(&clh->thread, NULL, lmk_console_log_handler_thread_routine, clh) != 0) {
+        fprintf(stderr, "logmoko: unable to create console handler thread\n");
+        lmk_free(clh->ring_buffer);
+        clh->ring_buffer = NULL;
+        clh->running = 0;
+        return;
+    }
 }
 
 void lmk_console_log_handler_destroy(struct lmk_log_handler *handler, void *param) {

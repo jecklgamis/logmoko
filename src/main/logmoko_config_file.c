@@ -165,13 +165,14 @@ static int lmk_cfg_parse_file(const char *path, struct lmk_cfg *cfg) {
             if (!strcasecmp(key, "level")) {
                 cur_logger->level = lmk_cfg_parse_level(val);
             } else if (!strcasecmp(key, "handlers")) {
-                char *tok = strtok(val, ",");
+                char *saveptr = NULL;
+                char *tok = strtok_r(val, ",", &saveptr);
                 while (tok && cur_logger->nr_handlers < LMK_CFG_MAX_HANDLERS_PER_LOGGER) {
                     char *hname = lmk_cfg_trim(tok);
                     if (*hname)
                         strncpy(cur_logger->handler_names[cur_logger->nr_handlers++],
                                 hname, sizeof(cur_logger->handler_names[0]) - 1);
-                    tok = strtok(NULL, ",");
+                    tok = strtok_r(NULL, ",", &saveptr);
                 }
             }
         }

@@ -7,7 +7,8 @@ LMK_API int lmk_open_udp_socket(struct lmk_udp_socket *udp_socket) {
     if ((sockd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
         return LMK_E_NG;
     }
-    setsockopt(sockd, SOL_SOCKET, SO_SNDBUF, (char *) &send_size, (int) sizeof(send_size));
+    if (setsockopt(sockd, SOL_SOCKET, SO_SNDBUF, (char *) &send_size, (int) sizeof(send_size)) < 0)
+        fprintf(stderr, "logmoko: setsockopt SO_SNDBUF failed\n");
     udp_socket->sockd = sockd;
     return LMK_E_OK;
 }

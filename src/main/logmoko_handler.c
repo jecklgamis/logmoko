@@ -58,8 +58,14 @@ LMK_API struct lmk_log_handler *lmk_get_console_log_handler() {
         lmk_init_base_log_handler(&clh->base, LMK_LOG_HANDLER_TYPE_CONSOLE,
                                   lmk_console_log_handler_init, lmk_console_log_handler_destroy,
                                   lmk_console_log_handler_log_impl, "console");
-        lmk_insert_list(&g_lmk_handler_list, &clh->base.link);
         clh->base.init(&clh->base, NULL);
+        if (!clh->ring_buffer) {
+            lmk_free((void *) clh->base.name);
+            pthread_mutex_destroy(&clh->base.lock);
+            lmk_free(clh);
+            return NULL;
+        }
+        lmk_insert_list(&g_lmk_handler_list, &clh->base.link);
         clh->base.initialized = 1;
     }
     return ((struct lmk_log_handler *) clh);
@@ -69,23 +75,30 @@ LMK_API struct lmk_log_handler *lmk_get_file_log_handler(const char *name, const
     struct lmk_file_log_handler *flh = NULL;
     struct lmk_log_handler *handler = NULL;
     lmk_init();
-    if (name) {
-        if ((handler = lmk_search_log_handler_by_name(name)) != NULL) {
-            return handler;
+    if (!name || !filename)
+        return NULL;
+    if ((handler = lmk_search_log_handler_by_name(name)) != NULL) {
+        return handler;
+    }
+    if ((flh = (struct lmk_file_log_handler *) lmk_malloc(
+            sizeof(struct lmk_file_log_handler))) != NULL) {
+        lmk_init_base_log_handler(&flh->base, LMK_LOG_HANDLER_TYPE_FILE,
+                                  lmk_file_log_handler_init, lmk_file_log_handler_destroy,
+                                  lmk_file_log_handler_log_impl, name);
+        flh->log_fp = NULL;
+        flh->filename = lmk_strdup(filename);
+        flh->max_file_size = LMK_DEFAULT_MAX_FILE_SIZE;
+        flh->max_backup_files = LMK_DEFAULT_MAX_BACKUP_FILES;
+        flh->base.init(&flh->base, NULL);
+        if (!flh->ring_buffer) {
+            lmk_free((void *) flh->filename);
+            lmk_free((void *) flh->base.name);
+            pthread_mutex_destroy(&flh->base.lock);
+            lmk_free(flh);
+            return NULL;
         }
-        if ((flh = (struct lmk_file_log_handler *) lmk_malloc(
-                sizeof(struct lmk_file_log_handler))) != NULL) {
-            lmk_init_base_log_handler(&flh->base, LMK_LOG_HANDLER_TYPE_FILE,
-                                      lmk_file_log_handler_init, lmk_file_log_handler_destroy,
-                                      lmk_file_log_handler_log_impl, name);
-            flh->log_fp = NULL;
-            flh->filename = filename ? lmk_strdup(filename) : NULL;
-            flh->max_file_size = LMK_DEFAULT_MAX_FILE_SIZE;
-            flh->max_backup_files = LMK_DEFAULT_MAX_BACKUP_FILES;
-            lmk_insert_list(&g_lmk_handler_list, &flh->base.link);
-            flh->base.init(&flh->base, NULL);
-            flh->base.initialized = 1;
-        }
+        lmk_insert_list(&g_lmk_handler_list, &flh->base.link);
+        flh->base.initialized = 1;
     }
     return ((struct lmk_log_handler *) flh);
 }
@@ -103,8 +116,14 @@ LMK_API struct lmk_log_handler *lmk_get_socket_log_handler(const char *name) {
             lmk_init_base_log_handler(&slh->base, LMK_LOG_HANDLER_TYPE_SOCKET,
                                       lmk_socket_log_handler_init, lmk_socket_log_handler_destroy,
                                       lmk_socket_log_handler_log_impl, name);
-            lmk_insert_list(&g_lmk_handler_list, &slh->base.link);
             slh->base.init(&slh->base, NULL);
+            if (!slh->ring_buffer) {
+                lmk_free((void *) slh->base.name);
+                pthread_mutex_destroy(&slh->base.lock);
+                lmk_free(slh);
+                return NULL;
+            }
+            lmk_insert_list(&g_lmk_handler_list, &slh->base.link);
             slh->base.initialized = 1;
         }
     }
@@ -126,8 +145,14 @@ LMK_API struct lmk_log_handler *lmk_get_syslog_log_handler(const char *name, con
             if (ident)
                 strncpy(slh->ident, ident, sizeof(slh->ident) - 1);
             slh->facility = facility;
-            lmk_insert_list(&g_lmk_handler_list, &slh->base.link);
             slh->base.init(&slh->base, NULL);
+            if (!slh->ring_buffer) {
+                lmk_free((void *) slh->base.name);
+                pthread_mutex_destroy(&slh->base.lock);
+                lmk_free(slh);
+                return NULL;
+            }
+            lmk_insert_list(&g_lmk_handler_list, &slh->base.link);
             slh->base.initialized = 1;
         }
     }

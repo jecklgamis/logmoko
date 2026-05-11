@@ -60,7 +60,8 @@ void lmk_syslog_log_handler_init(struct lmk_log_handler *handler, void *param) {
     openlog(slh->ident[0] ? slh->ident : NULL, LOG_PID, slh->facility);
     slh->ring_buffer = lmk_malloc(sizeof(struct lmk_log_request) * lmk_get_config()->ring_buffer_size);
     if (!slh->ring_buffer) {
-        fprintf(stderr, "Unable to allocate ring buffer\n");
+        fprintf(stderr, "logmoko: unable to allocate syslog handler ring buffer\n");
+        closelog();
         pthread_mutex_unlock(&handler->lock);
         return;
     }
@@ -69,7 +70,15 @@ void lmk_syslog_log_handler_init(struct lmk_log_handler *handler, void *param) {
     slh->count = 0;
     slh->running = 1;
     pthread_cond_init(&slh->cond, NULL);
-    pthread_create(&slh->thread, NULL, lmk_syslog_log_handler_thread_routine, slh);
+    if (pthread_create(&slh->thread, NULL, lmk_syslog_log_handler_thread_routine, slh) != 0) {
+        fprintf(stderr, "logmoko: unable to create syslog handler thread\n");
+        lmk_free(slh->ring_buffer);
+        slh->ring_buffer = NULL;
+        slh->running = 0;
+        closelog();
+        pthread_mutex_unlock(&handler->lock);
+        return;
+    }
     pthread_mutex_unlock(&handler->lock);
 }
 

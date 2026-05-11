@@ -18,9 +18,8 @@ static void *lmk_socket_log_handler_thread_routine(void *arg) {
         struct lmk_log_request *slot = &slh->ring_buffer[slh->tail];
         pthread_mutex_unlock(&slh->base.lock);
 
-        size_t buf_size = lmk_get_config()->log_buffer_size;
-        char out[buf_size];
-        lmk_format_log_line(&slh->base, out, buf_size, slot);
+        char out[LMK_CFG_DEFAULT_LOG_BUFFER_SIZE];
+        lmk_format_log_line(&slh->base, out, sizeof(out), slot);
         struct lmk_list *cursor;
         LMK_FOR_EACH_ENTRY(&slh->log_server_list, cursor) {
             struct lmk_log_server *log_server = (struct lmk_log_server *) cursor;
@@ -52,12 +51,21 @@ void lmk_socket_log_handler_init(struct lmk_log_handler *handler, void *param) {
     slh->running = 1;
     slh->ring_buffer = lmk_malloc(sizeof(struct lmk_log_request) * lmk_get_config()->ring_buffer_size);
     if (!slh->ring_buffer) {
-        fprintf(stderr, "Unable to allocate ring buffer");
+        fprintf(stderr, "logmoko: unable to allocate socket handler ring buffer\n");
+        lmk_close_udp_socket(&slh->socket_object);
         pthread_mutex_unlock(&handler->lock);
         return;
     }
     pthread_cond_init(&slh->cond, NULL);
-    pthread_create(&slh->thread, NULL, lmk_socket_log_handler_thread_routine, slh);
+    if (pthread_create(&slh->thread, NULL, lmk_socket_log_handler_thread_routine, slh) != 0) {
+        fprintf(stderr, "logmoko: unable to create socket handler thread\n");
+        lmk_free(slh->ring_buffer);
+        slh->ring_buffer = NULL;
+        slh->running = 0;
+        lmk_close_udp_socket(&slh->socket_object);
+        pthread_mutex_unlock(&handler->lock);
+        return;
+    }
     pthread_mutex_unlock(&handler->lock);
 }
 

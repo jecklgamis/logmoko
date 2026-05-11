@@ -75,8 +75,10 @@ void lmk_file_log_handler_init(struct lmk_log_handler *handler, void *param) {
                 flh->filename, __FILE__, __LINE__);
     }
     if (flh->log_fp) {
-        fseek(flh->log_fp, 0, SEEK_END);
-        flh->current_file_size = ftell(flh->log_fp);
+        if (fseek(flh->log_fp, 0, SEEK_END) == 0) {
+            long sz = ftell(flh->log_fp);
+            flh->current_file_size = sz >= 0 ? sz : 0;
+        }
     }
     flh->head = 0;
     flh->tail = 0;
@@ -84,12 +86,27 @@ void lmk_file_log_handler_init(struct lmk_log_handler *handler, void *param) {
     flh->running = 1;
     flh->ring_buffer = lmk_malloc(sizeof(struct lmk_log_request) * lmk_get_config()->ring_buffer_size);
     if (!flh->ring_buffer) {
-        fprintf(stderr,"Unable to allocate ring buffer\n");
+        fprintf(stderr, "logmoko: unable to allocate file handler ring buffer\n");
+        if (flh->log_fp) {
+            fclose(flh->log_fp);
+            flh->log_fp = NULL;
+        }
         pthread_mutex_unlock(&handler->lock);
         return;
     }
     pthread_cond_init(&flh->cond, NULL);
-    pthread_create(&flh->thread, NULL, lmk_file_log_handler_thread_routine, flh);
+    if (pthread_create(&flh->thread, NULL, lmk_file_log_handler_thread_routine, flh) != 0) {
+        fprintf(stderr, "logmoko: unable to create file handler thread\n");
+        lmk_free(flh->ring_buffer);
+        flh->ring_buffer = NULL;
+        flh->running = 0;
+        if (flh->log_fp) {
+            fclose(flh->log_fp);
+            flh->log_fp = NULL;
+        }
+        pthread_mutex_unlock(&handler->lock);
+        return;
+    }
     pthread_mutex_unlock(&handler->lock);
 }
 

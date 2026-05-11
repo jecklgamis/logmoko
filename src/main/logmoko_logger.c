@@ -22,17 +22,21 @@ LMK_API struct lmk_logger *lmk_get_logger(const char *name) {
     if ((logger = (struct lmk_logger *) lmk_malloc(sizeof(struct lmk_logger))) != NULL) {
         lmk_init_logger(logger);
         int name_len = strlen(name);
-        if ((logger->name = lmk_malloc(name_len + 1)) != NULL) {
-            strncpy((void *) logger->name, name, name_len);
-            logger->name[name_len] = '\0';
+        if ((logger->name = lmk_malloc(name_len + 1)) == NULL) {
+            lmk_free(logger);
+            return NULL;
         }
+        strncpy((void *) logger->name, name, name_len);
+        logger->name[name_len] = '\0';
         lmk_init_list(&logger->handler_ref_list);
-        lmk_insert_list(&g_lmk_logger_list, &logger->link);
         logger->log_buff = lmk_malloc(lmk_get_config()->log_buffer_size);
         if (!logger->log_buff) {
             fprintf(stderr, "Unable to allocate log buffer\n");
+            lmk_free((void *) logger->name);
+            lmk_free(logger);
             return NULL;
         }
+        lmk_insert_list(&g_lmk_logger_list, &logger->link);
     }
     return logger;
 }
