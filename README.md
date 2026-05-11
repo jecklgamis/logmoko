@@ -5,6 +5,14 @@
 Logmoko is a logging framework for C. It supports multiple log levels, named loggers, pluggable handlers,
 asynchronous I/O, log rotation, syslog, and INI-based configuration.
 
+Tested on:
+
+| Distro | libc |
+|---|---|
+| Ubuntu 24.04 | glibc |
+| Alpine 3.21 | musl |
+| Fedora 41 | glibc |
+
 ### Contents
 
 - [Features](#features)
