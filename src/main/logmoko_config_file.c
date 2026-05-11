@@ -1,13 +1,7 @@
 #include "logmoko.h"
 #include <ctype.h>
 
-#define LMK_CFG_MAX_LISTENERS           16
-#define LMK_CFG_MAX_HANDLERS            32
-#define LMK_CFG_MAX_LOGGERS             64
-#define LMK_CFG_MAX_HANDLERS_PER_LOGGER 16
-#define LMK_CFG_LINE_MAX                512
-#define LMK_CFG_DEFAULT_RING_BUFFER_SIZE 128
-#define LMK_CFG_DEFAULT_LOG_BUFFER_SIZE  2048
+
 
 struct lmk_cfg_listener {
     char host[64];
@@ -33,7 +27,6 @@ struct lmk_cfg_logger {
 struct lmk_cfg {
     int log_buffer_size;
     int ring_buffer_size;
-    int default_level;
     struct lmk_cfg_handler handlers[LMK_CFG_MAX_HANDLERS];
     int nr_handlers;
     struct lmk_cfg_logger loggers[LMK_CFG_MAX_LOGGERS];
@@ -65,7 +58,7 @@ enum { LMK_SEC_NONE, LMK_SEC_GLOBAL, LMK_SEC_HANDLER, LMK_SEC_LOGGER };
 static int lmk_cfg_parse_file(const char *path, struct lmk_cfg *cfg) {
     FILE *fp = fopen(path, "r");
     if (!fp)
-        return -1;
+        return LMK_E_NG;
 
     char line[LMK_CFG_LINE_MAX];
     int section = LMK_SEC_NONE;
@@ -125,8 +118,6 @@ static int lmk_cfg_parse_file(const char *path, struct lmk_cfg *cfg) {
                 cfg->log_buffer_size = atoi(val);
             else if (!strcasecmp(key, "ring_buffer_size"))
                 cfg->ring_buffer_size = atoi(val);
-            else if (!strcasecmp(key, "default_level"))
-                cfg->default_level = lmk_cfg_parse_level(val);
         } else if (section == LMK_SEC_HANDLER && cur_handler) {
             if (!strcasecmp(key, "type")) {
                 if (!strcasecmp(val, "console"))
@@ -170,7 +161,7 @@ static int lmk_cfg_parse_file(const char *path, struct lmk_cfg *cfg) {
     }
 
     fclose(fp);
-    return 0;
+    return LMK_E_OK;
 }
 
 static void lmk_cfg_apply(const struct lmk_cfg *cfg) {
@@ -180,8 +171,6 @@ static void lmk_cfg_apply(const struct lmk_cfg *cfg) {
                                                            : LMK_CFG_DEFAULT_LOG_BUFFER_SIZE;
     lmk_cfg->ring_buffer_size = cfg->ring_buffer_size > 0 ? (unsigned int) cfg->ring_buffer_size
                                                            : LMK_CFG_DEFAULT_RING_BUFFER_SIZE;
-    if (cfg->default_level != -1)
-        lmk_cfg->default_level = (unsigned int) cfg->default_level;
 
     for (int i = 0; i < cfg->nr_handlers; i++) {
         const struct lmk_cfg_handler *ch = &cfg->handlers[i];
@@ -216,45 +205,33 @@ static void lmk_cfg_apply(const struct lmk_cfg *cfg) {
                 lmk_attach_log_handler(logger, handler);
         }
     }
-#if LMK_DEBUG
-    fprintf(stdout, "Using log_buffer_size = %d\n", lmk_cfg->log_buffer_size);
-    fprintf(stdout, "Using ring_buffer_size = %d\n", lmk_cfg->ring_buffer_size);
-    fprintf(stdout, "Using default_level = %d\n", lmk_cfg->default_level);
-#endif
+
 }
 
 static int lmk_parse_and_apply(const char *path) {
-    fprintf(stdout, "Loading config from %s\n", path);
     struct lmk_cfg cfg;
     memset(&cfg, 0, sizeof(cfg));
-    cfg.default_level = -1;
-    if (lmk_cfg_parse_file(path, &cfg) != 0) {
-        fprintf(stderr, "Unable to parse %s\n", path);
+    if (lmk_cfg_parse_file(path, &cfg) != LMK_E_OK) {
         return LMK_E_NG;
     }
     lmk_cfg_apply(&cfg);
     return LMK_E_OK;
 }
 
-void lmk_apply_auto_config() {
+int lmk_apply_auto_config() {
     const char *env_path = getenv("LMK_CONFIG_FILE");
-    if (env_path) {
-        if (lmk_parse_and_apply(env_path) != 0)
-            fprintf(stderr, "logmoko: unable to open config file: %s\n", env_path);
-    } else {
-        lmk_parse_and_apply("logmoko.conf");
-    }
+    if (env_path)
+        return lmk_parse_and_apply(env_path);
+    return lmk_parse_and_apply("logmoko.conf");
 }
 
 LMK_API int lmk_init_from_file(const char *path) {
     lmk_init();
-    if (!path) {
-        lmk_apply_auto_config();
-        return 0;
-    }
-    if (lmk_parse_and_apply(path) != 0) {
+    if (!path)
+        return lmk_apply_auto_config();
+    if (lmk_parse_and_apply(path) != LMK_E_OK) {
         fprintf(stderr, "logmoko: unable to open config file: %s\n", path);
-        return -1;
+        return LMK_E_NG;
     }
-    return 0;
+    return LMK_E_OK;
 }

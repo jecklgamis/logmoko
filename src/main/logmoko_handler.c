@@ -41,7 +41,6 @@ void lmk_init_base_log_handler(struct lmk_log_handler *handler, int type,
     }
 }
 
-/* Retrieves the console log handler */
 LMK_API struct lmk_log_handler *lmk_get_console_log_handler() {
     struct lmk_console_log_handler *clh = NULL;
     struct lmk_log_handler *handler = NULL;

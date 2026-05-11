@@ -16,16 +16,14 @@
 #include "logmoko_connector.h"
 #include "logmoko_mem.h"
 
-#define LMK_DEBUG 1
+#define LMK_DEBUG 0
 
 #define LMK_VERSION_STRING "2.0.0-rcX"
 
 struct lmk_config {
     unsigned int log_buffer_size;
     unsigned int ring_buffer_size;
-    unsigned int default_level;
 };
-
 
 enum {
     LMK_LOG_LEVEL_TRACE = 0,
@@ -236,5 +234,13 @@ extern struct lmk_list *lmk_get_handlers();
 extern void lmk_attach_log_listener(struct lmk_log_handler *handler, const char *ip, int port);
 
 extern struct lmk_config *lmk_get_config();
+
+#define LMK_CFG_MAX_LISTENERS           16
+#define LMK_CFG_MAX_HANDLERS            32
+#define LMK_CFG_MAX_LOGGERS             64
+#define LMK_CFG_MAX_HANDLERS_PER_LOGGER 16
+#define LMK_CFG_LINE_MAX                512
+#define LMK_CFG_DEFAULT_RING_BUFFER_SIZE 256
+#define LMK_CFG_DEFAULT_LOG_BUFFER_SIZE  2048
 
 #endif /* LOGMOKO_H */
