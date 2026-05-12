@@ -13,7 +13,7 @@ int main(int argc, char *argv[]) {
     lmk_attach_log_handler(logger, handler);
 
     struct lmk_rate_limiter rl;
-    lmk_rate_limiter_init(&rl, 500000);
+    lmk_rate_limiter_init(&rl, 100000);
 
     for (int i = 0; i < 10000; i++) {
         LMK_LOG_INFO(logger, "This is an info log %d", i);
