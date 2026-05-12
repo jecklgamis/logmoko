@@ -38,6 +38,7 @@ jobs:
           - distro: amazonlinux-2023
             runs-on: ubuntu-latest
             container: amazonlinux:2023
+            prereqs: dnf install -y tar gzip
             install: dnf install -y gcc make autoconf automake libtool openssl-devel
           - distro: macos-14
             runs-on: macos-14
@@ -46,6 +47,10 @@ jobs:
             configure_flags: CPPFLAGS="-I/opt/homebrew/opt/openssl@3/include" LDFLAGS="-L/opt/homebrew/opt/openssl@3/lib"
 
     steps:
+      - name: Install checkout prerequisites
+        if: matrix.prereqs != ''
+        run: ${{ matrix.prereqs }}
+
       - uses: actions/checkout@v4
 
       - name: Install dependencies
