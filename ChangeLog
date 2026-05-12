@@ -1,1 +1,29 @@
-TODO
+2.0.0 (2026-05-13)
+
+  New features:
+  * Lock-free MPMC ring buffer per handler — log calls never block; full
+    slots are dropped rather than stalling the caller
+  * AES-256-GCM encrypted UDP transport on the socket handler via a
+    preshared key (lmk_set_socket_psk / psk config key)
+  * Rate limiter utility (logmoko_rate_limiter) for pacing log producers
+  * logmoko_log_receiver binary for decrypting and printing incoming
+    encrypted UDP packets
+  * JSON log format (format=json / lmk_set_log_format with lmk_get_format_fn("json"))
+  * Simple log format (format=simple)
+  * Per-handler log level (lmk_set_handler_log_level)
+  * INI-based config file initialisation (lmk_init_from_file)
+  * Log rotation on the file handler (lmk_set_log_rotation)
+  * Syslog handler (lmk_get_syslog_log_handler)
+
+  Performance:
+  * ~1.2M logs/sec sustained throughput, ~1 µs p99 enqueue latency
+  * Flat scaling across 1-8 producer threads
+  * ~1.5 ns/call overhead for filtered (non-emitting) log calls
+  * Socket handler: ~310K msg/sec plain, ~250K msg/sec AES-256-GCM
+
+  Platform support:
+  * Ubuntu 24.04 (glibc), Alpine 3.21 (musl), Fedora 41 (glibc),
+    macOS 14 Apple Silicon (libSystem)
+
+  Bug fixes:
+  * Fixed memory leaks and null dereference in destroy and socket handler

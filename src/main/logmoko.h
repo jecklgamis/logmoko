@@ -19,7 +19,7 @@
 
 #define LMK_DEBUG 0
 
-#define LMK_VERSION_STRING "2.0.0-rcX"
+#define LMK_VERSION_STRING "2.0.0"
 
 struct lmk_config {
     unsigned int log_buffer_size;
