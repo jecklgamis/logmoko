@@ -22,19 +22,20 @@ jobs:
           - distro: ubuntu-24.04
             runs-on: ubuntu-latest
             container: ubuntu:24.04
-            install: apt-get update && apt-get install -y gcc make autoconf automake libtool
+            install: apt-get update && apt-get install -y gcc make autoconf automake libtool libssl-dev
           - distro: alpine-3.21
             runs-on: ubuntu-latest
             container: alpine:3.21
-            install: apk add --no-cache bash gcc musl-dev make autoconf automake libtool
+            install: apk add --no-cache bash gcc musl-dev make autoconf automake libtool openssl-dev
           - distro: fedora-41
             runs-on: ubuntu-latest
             container: fedora:41
-            install: dnf install -y gcc make autoconf automake libtool
+            install: dnf install -y gcc make autoconf automake libtool openssl-devel
           - distro: macos-14
             runs-on: macos-14
             container: ""
-            install: brew install autoconf automake libtool
+            install: brew install autoconf automake libtool openssl@3
+            configure_flags: CPPFLAGS="-I/opt/homebrew/opt/openssl@3/include" LDFLAGS="-L/opt/homebrew/opt/openssl@3/lib"
 
     steps:
       - uses: actions/checkout@v4
@@ -46,7 +47,7 @@ jobs:
         run: ./autogen.sh
 
       - name: Configure
-        run: ./configure
+        run: ./configure ${{ matrix.configure_flags }}
 
       - name: Run tests
         run: make check
