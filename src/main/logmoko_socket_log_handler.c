@@ -1,4 +1,5 @@
 #include "logmoko.h"
+#include "logmoko_encryption.h"
 
 static inline void lmk_socket_maybe_wake(struct lmk_socket_log_handler *slh) {
     atomic_thread_fence(memory_order_seq_cst);
@@ -12,6 +13,7 @@ static inline void lmk_socket_maybe_wake(struct lmk_socket_log_handler *slh) {
 static void *lmk_socket_log_handler_thread_routine(void *arg) {
     struct lmk_socket_log_handler *slh = (struct lmk_socket_log_handler *)arg;
     char out[LMK_LOG_MSG_MAX_SIZE + 512];
+    unsigned char enc[LMK_LOG_MSG_MAX_SIZE + 512 + CRYPTO_OVERHEAD];
 
     while (1) {
         struct lmk_ring_slot *slot;
@@ -19,13 +21,25 @@ static void *lmk_socket_log_handler_thread_routine(void *arg) {
             int n = lmk_format_log_line(&slh->base, out, sizeof(out), &slot->req);
             if (n > 0) {
                 struct lmk_list *cursor;
+                int use_psk = atomic_load_explicit(&slh->psk_enabled, memory_order_acquire);
                 /* Server list is append-only after init; safe to read without lock. */
                 LMK_FOR_EACH_ENTRY(&slh->log_server_list, cursor) {
                     struct lmk_log_server *log_server = (struct lmk_log_server *)cursor;
-                    struct lmk_buffer buffer = { .addr = (unsigned char *)out, .size = (size_t)n };
-                    struct lmk_udp_packet packet = { .buffer = &buffer,
-                                                     .socket_addr = &log_server->socket_addr };
-                    lmk_send_udp_packet(&slh->socket_object, &packet);
+                    if (use_psk) {
+                        int enc_len = 0;
+                        if (encrypt_packet((EVP_CIPHER_CTX *)slh->cipher_ctx, slh->psk_key,
+                                           (unsigned char *)out, n, enc, &enc_len) == 0) {
+                            struct lmk_buffer enc_buf = { .addr = enc, .size = (size_t)enc_len };
+                            struct lmk_udp_packet enc_pkt = { .buffer = &enc_buf,
+                                                              .socket_addr = &log_server->socket_addr };
+                            lmk_send_udp_packet(&slh->socket_object, &enc_pkt);
+                        }
+                    } else {
+                        struct lmk_buffer buffer = { .addr = (unsigned char *)out, .size = (size_t)n };
+                        struct lmk_udp_packet packet = { .buffer = &buffer,
+                                                         .socket_addr = &log_server->socket_addr };
+                        lmk_send_udp_packet(&slh->socket_object, &packet);
+                    }
                 }
             }
             lmk_ring_consume(slh->ring_buffer, &slh->tail, slh->ring_mask);
@@ -66,6 +80,8 @@ void lmk_socket_log_handler_init(struct lmk_log_handler *handler, void *param) {
     atomic_init(&slh->running, 1);
     atomic_init(&slh->sleeping, 0);
     atomic_init(&slh->dropped, 0);
+    atomic_init(&slh->psk_enabled, 0);
+    slh->cipher_ctx = EVP_CIPHER_CTX_new();
     pthread_mutex_init(&slh->wakeup_lock, NULL);
     pthread_cond_init(&slh->wakeup_cond, NULL);
 
@@ -76,6 +92,8 @@ void lmk_socket_log_handler_init(struct lmk_log_handler *handler, void *param) {
         slh->ring_buffer = NULL;
         atomic_store(&slh->running, 0);
         lmk_close_udp_socket(&slh->socket_object);
+        EVP_CIPHER_CTX_free((EVP_CIPHER_CTX *)slh->cipher_ctx);
+        slh->cipher_ctx = NULL;
         pthread_cond_destroy(&slh->wakeup_cond);
         pthread_mutex_destroy(&slh->wakeup_lock);
     }
@@ -114,6 +132,8 @@ void lmk_socket_log_handler_destroy(struct lmk_log_handler *handler, void *param
                 handler->name, dropped, atomic_load(&handler->nr_log_calls));
     lmk_free(slh->ring_buffer);
     slh->ring_buffer = NULL;
+    EVP_CIPHER_CTX_free((EVP_CIPHER_CTX *)slh->cipher_ctx);
+    slh->cipher_ctx = NULL;
 
     pthread_mutex_lock(&handler->lock);
     struct lmk_list *cursor;
@@ -148,4 +168,13 @@ LMK_API void lmk_attach_log_listener(struct lmk_log_handler *handler,
         }
     }
     pthread_mutex_unlock(&handler->lock);
+}
+
+LMK_API void lmk_set_socket_psk(struct lmk_log_handler *handler, const char *psk) {
+    if (!handler || !psk || handler->type != LMK_LOG_HANDLER_TYPE_SOCKET)
+        return;
+    struct lmk_socket_log_handler *slh = (struct lmk_socket_log_handler *)handler;
+    /* Derive the 32-byte key via SHA-256(psk), then atomically enable encryption. */
+    derive_key(psk, slh->psk_key);
+    atomic_store_explicit(&slh->psk_enabled, 1, memory_order_release);
 }

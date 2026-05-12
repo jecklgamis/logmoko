@@ -28,6 +28,8 @@ AC_SEARCH_LIBS([pthread_create],[pthread],,[AC_MSG_ERROR([Unable to find pthread
 AC_SEARCH_LIBS([socket],[socket nsl],,[AC_MSG_ERROR([Unable to find socket library])])
 AC_SEARCH_LIBS([inet_pton],[nsl socket],,[AC_MSG_ERROR([Unable to find inet_pton])])
 AC_SEARCH_LIBS([openlog],[],,[AC_MSG_ERROR([Unable to find syslog functions])])
+AC_SEARCH_LIBS([EVP_EncryptInit_ex],[crypto ssl],,[AC_MSG_ERROR([Unable to find OpenSSL crypto library])])
+AC_CHECK_HEADERS([openssl/evp.h openssl/rand.h openssl/sha.h openssl/hmac.h openssl/crypto.h],,[AC_MSG_ERROR([OpenSSL headers not found])])
 
 # Checks for header files.
 AC_CHECK_HEADERS([stdio.h stdlib.h string.h inttypes.h stdint.h strings.h \

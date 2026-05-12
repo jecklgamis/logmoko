@@ -31,7 +31,7 @@ struct lmk_udp_socket {
     int sockd;
 };
 
-#define LMK_UDP_SOCKET_DEFAULT_SEND_BUFFER_SIZE 2048
+#define LMK_UDP_SOCKET_DEFAULT_SEND_BUFFER_SIZE (256 * 1024)
 
 LMK_API int lmk_open_udp_socket(struct lmk_udp_socket *socket);
 

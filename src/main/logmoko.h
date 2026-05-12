@@ -229,6 +229,9 @@ struct lmk_socket_log_handler {
     pthread_mutex_t wakeup_lock;
     pthread_cond_t  wakeup_cond;
     _Atomic unsigned long dropped;
+    _Atomic int psk_enabled;
+    unsigned char psk_key[32];  /* SHA-256 of the preshared key string */
+    void *cipher_ctx;           /* EVP_CIPHER_CTX *, used only from consumer thread */
 };
 
 struct lmk_syslog_log_handler {
@@ -317,6 +320,7 @@ extern const char *lmk_get_log_level_str(int log_level);
 extern struct lmk_list *lmk_get_loggers();
 extern struct lmk_list *lmk_get_handlers();
 extern void lmk_attach_log_listener(struct lmk_log_handler *handler, const char *ip, int port);
+extern LMK_API void lmk_set_socket_psk(struct lmk_log_handler *handler, const char *psk);
 extern struct lmk_config *lmk_get_config();
 
 /* Returns the number of characters written (snprintf return value, clamped). */

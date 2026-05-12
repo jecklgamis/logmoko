@@ -20,6 +20,7 @@ struct lmk_cfg_handler {
     char format[32];
     char ident[64];
     char facility[32];
+    char psk[256];
 };
 
 struct lmk_cfg_logger {
@@ -147,6 +148,8 @@ static int lmk_cfg_parse_file(const char *path, struct lmk_cfg *cfg) {
                 cur_handler->max_file_size = atol(val);
             } else if (!strcasecmp(key, "max_backup_files")) {
                 cur_handler->max_backup_files = atoi(val);
+            } else if (!strcasecmp(key, "psk")) {
+                strncpy(cur_handler->psk, val, sizeof(cur_handler->psk) - 1);
             } else if (!strcasecmp(key, "listener")) {
                 if (cur_handler->nr_listeners < LMK_CFG_MAX_LISTENERS) {
                     char *colon = strrchr(val, ':');
@@ -211,6 +214,8 @@ static void lmk_cfg_apply(const struct lmk_cfg *cfg) {
         } else if (ch->type == LMK_LOG_HANDLER_TYPE_SOCKET) {
             handler = lmk_get_socket_log_handler(ch->name);
             if (handler) {
+                if (ch->psk[0])
+                    lmk_set_socket_psk(handler, ch->psk);
                 for (int j = 0; j < ch->nr_listeners; j++)
                     lmk_attach_log_listener(handler, ch->listeners[j].host, ch->listeners[j].port);
             }

@@ -7,20 +7,24 @@ LIBDEP = ../src/main/liblogmoko.a
 UNAME := $(shell uname)
 
 ifeq ($(UNAME), Darwin)
-  INCLUDES     = -I../src/main -I../src -I/opt/homebrew/include -I.
-  LIBS         = $(LIBDEP) /opt/homebrew/lib/libzlog.a -lpthread
-  SPDLOG_LIBS  = /opt/homebrew/lib/libspdlog.a /opt/homebrew/lib/libfmt.a -lpthread
-  ALL_LIBS     = $(LIBDEP) /opt/homebrew/lib/libzlog.a \
-                 /opt/homebrew/lib/libspdlog.a /opt/homebrew/lib/libfmt.a \
-                 -L/opt/homebrew/lib -lg3log -llog4c -lpthread
+  INCLUDES      = -I../src/main -I../src -I/opt/homebrew/include -I.
+  LIBS          = $(LIBDEP) /opt/homebrew/lib/libzlog.a -lpthread
+  SPDLOG_LIBS   = /opt/homebrew/lib/libspdlog.a /opt/homebrew/lib/libfmt.a -lpthread
+  ALL_LIBS      = $(LIBDEP) /opt/homebrew/lib/libzlog.a \
+                  /opt/homebrew/lib/libspdlog.a /opt/homebrew/lib/libfmt.a \
+                  -L/opt/homebrew/lib -lg3log -llog4c -lpthread
+  CRYPTO_LIBS   = -L/opt/homebrew/opt/openssl@3/lib -lcrypto
+  CRYPTO_INC    = -I/opt/homebrew/opt/openssl@3/include
 else
-  INCLUDES     = -I../src/main -I../src -I.
-  LIBS         = $(LIBDEP) -lzlog -lpthread
-  SPDLOG_LIBS  = -lspdlog -lfmt -lpthread
-  ALL_LIBS     = $(LIBDEP) -lzlog -lspdlog -lfmt -lg3log -llog4c -lpthread
+  INCLUDES      = -I../src/main -I../src -I.
+  LIBS          = $(LIBDEP) -lzlog -lpthread
+  SPDLOG_LIBS   = -lspdlog -lfmt -lpthread
+  ALL_LIBS      = $(LIBDEP) -lzlog -lspdlog -lfmt -lg3log -llog4c -lpthread
+  CRYPTO_LIBS   = -lcrypto
+  CRYPTO_INC    =
 endif
 
-all: bench bench_ringbuf bench_spdlog bench_all
+all: bench bench_ringbuf bench_spdlog bench_all bench_socket
 
 bench: bench.c $(LIBDEP)
 	$(CC) $(CFLAGS) $(INCLUDES) -o $@ $< $(LIBS)
@@ -55,8 +59,14 @@ run-spdlog: bench_spdlog
 run-all: bench_all
 	./bench_all
 
+bench_socket: bench_socket.c $(LIBDEP)
+	$(CC) $(CFLAGS) $(INCLUDES) $(CRYPTO_INC) -o $@ $< $(LIBDEP) -lpthread $(CRYPTO_LIBS)
+
+run-socket: bench_socket
+	./bench_socket
+
 clean:
-	rm -f bench bench_ringbuf bench_spdlog bench_all log_c.o bench_logmoko.o
+	rm -f bench bench_ringbuf bench_spdlog bench_all bench_socket log_c.o bench_logmoko.o
 	rm -f *.log *.log.*
 
-.PHONY: all run run-ringbuf run-spdlog run-all clean
+.PHONY: all run run-ringbuf run-spdlog run-all run-socket clean

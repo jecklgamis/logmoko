@@ -1,6 +1,9 @@
 ## Process this file with automake to produce Makefile.in
 
 lib_LIBRARIES = liblogmoko.a
+noinst_PROGRAMS = logmoko_log_receiver
+logmoko_log_receiver_SOURCES = logmoko_log_receiver.c
+logmoko_log_receiver_LDADD   = liblogmoko.a -lcrypto
 
 liblogmoko_a_SOURCES = \
     logmoko.c \
@@ -15,7 +18,9 @@ liblogmoko_a_SOURCES = \
     logmoko_config_file.c \
     logmoko_list.c \
     logmoko_mem.c \
-    logmoko_connector.c
+    logmoko_connector.c \
+    logmoko_encryption.c \
+    logmoko_rate_limiter.c
     
 include_HEADERS =  \
     logmoko.h \
@@ -23,7 +28,8 @@ include_HEADERS =  \
     logmoko_time.h \
     logmoko_connector.h \
     logmoko_mem.h \
-    logmoko_list.h
+    logmoko_list.h \
+    logmoko_rate_limiter.h
 
 
 if DEBUG

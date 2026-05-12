@@ -1,6 +1,9 @@
 #include "logmoko.h"
 
 int main(int argc, char *argv[]) {
+      /* Initialise logmoko */
+      lmk_init();
+
       /* Create a logger */
       struct lmk_logger *logger = lmk_get_logger("logger");
 
