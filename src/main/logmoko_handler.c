@@ -24,6 +24,12 @@ extern void lmk_syslog_log_handler_destroy(struct lmk_log_handler *handler, void
 
 extern void lmk_syslog_log_handler_log_impl(struct lmk_log_handler *handler, void *param);
 
+extern void lmk_sync_file_log_handler_init(struct lmk_log_handler *handler, void *param);
+
+extern void lmk_sync_file_log_handler_destroy(struct lmk_log_handler *handler, void *param);
+
+extern void lmk_sync_file_log_handler_log_impl(struct lmk_log_handler *handler, void *param);
+
 extern struct lmk_list g_lmk_handler_list;
 
 void lmk_init_base_log_handler(struct lmk_log_handler *handler, int type,
@@ -157,6 +163,38 @@ LMK_API struct lmk_log_handler *lmk_get_syslog_log_handler(const char *name, con
         }
     }
     return ((struct lmk_log_handler *) slh);
+}
+
+LMK_API struct lmk_log_handler *lmk_get_sync_file_log_handler(const char *name,
+                                                                const char *filename) {
+    struct lmk_sync_file_log_handler *sfh = NULL;
+    struct lmk_log_handler *handler = NULL;
+    lmk_init();
+    if (!name || !filename)
+        return NULL;
+    if ((handler = lmk_search_log_handler_by_name(name)) != NULL)
+        return handler;
+    if ((sfh = lmk_malloc(sizeof(struct lmk_sync_file_log_handler))) != NULL) {
+        lmk_init_base_log_handler(&sfh->base, LMK_LOG_HANDLER_TYPE_SYNC_FILE,
+                                  lmk_sync_file_log_handler_init,
+                                  lmk_sync_file_log_handler_destroy,
+                                  lmk_sync_file_log_handler_log_impl, name);
+        sfh->filename          = lmk_strdup(filename);
+        sfh->log_fp            = NULL;
+        sfh->max_file_size     = LMK_DEFAULT_MAX_FILE_SIZE;
+        sfh->max_backup_files  = LMK_DEFAULT_MAX_BACKUP_FILES;
+        sfh->current_file_size = 0;
+        sfh->base.init(&sfh->base, NULL);
+        if (!sfh->base.initialized) {
+            lmk_free((void *)sfh->filename);
+            lmk_free((void *)sfh->base.name);
+            pthread_mutex_destroy(&sfh->base.lock);
+            lmk_free(sfh);
+            return NULL;
+        }
+        lmk_insert_list(&g_lmk_handler_list, &sfh->base.link);
+    }
+    return (struct lmk_log_handler *)sfh;
 }
 
 int lmk_destroy_log_handler(struct lmk_log_handler **handler_addr) {
@@ -293,7 +331,7 @@ LMK_API void lmk_set_log_format(struct lmk_log_handler *handler, lmk_format_fn f
     }
 }
 
-static const char *g_log_hnd_type_str[] = {"CONSOLE", "FILE", "SOCKET", "SYSLOG"};
+static const char *g_log_hnd_type_str[] = {"CONSOLE", "FILE", "SOCKET", "SYSLOG", "SYNC_FILE"};
 
 const char *lmk_get_log_handler_type_str(int type) {
     const char *type_str = "UNKNOWN";
