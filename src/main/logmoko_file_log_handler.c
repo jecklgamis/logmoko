@@ -207,21 +207,33 @@ void lmk_file_log_handler_destroy(struct lmk_log_handler *handler, void *param) 
 
 LMK_API void lmk_set_log_rotation(struct lmk_log_handler *handler,
                                    long max_file_size, int max_backup_files) {
-    if (handler && handler->type == LMK_LOG_HANDLER_TYPE_FILE) {
+    if (!handler)
+        return;
+    pthread_mutex_lock(&handler->lock);
+    if (handler->type == LMK_LOG_HANDLER_TYPE_FILE) {
         struct lmk_file_log_handler *flh = (struct lmk_file_log_handler *)handler;
-        pthread_mutex_lock(&handler->lock);
         flh->max_file_size    = max_file_size;
         flh->max_backup_files = max_backup_files;
-        pthread_mutex_unlock(&handler->lock);
+    } else if (handler->type == LMK_LOG_HANDLER_TYPE_SYNC_FILE) {
+        struct lmk_sync_file_log_handler *sfh = (struct lmk_sync_file_log_handler *)handler;
+        sfh->max_file_size    = max_file_size;
+        sfh->max_backup_files = max_backup_files;
     }
+    pthread_mutex_unlock(&handler->lock);
 }
 
 LMK_API void lmk_set_log_filename(struct lmk_log_handler *handler, const char *filename) {
+    if (!handler || !filename)
+        return;
     pthread_mutex_lock(&handler->lock);
-    if (handler && filename && handler->type == LMK_LOG_HANDLER_TYPE_FILE) {
+    if (handler->type == LMK_LOG_HANDLER_TYPE_FILE) {
         struct lmk_file_log_handler *flh = (struct lmk_file_log_handler *)handler;
         lmk_free((void *)flh->filename);
         flh->filename = lmk_strdup(filename);
+    } else if (handler->type == LMK_LOG_HANDLER_TYPE_SYNC_FILE) {
+        struct lmk_sync_file_log_handler *sfh = (struct lmk_sync_file_log_handler *)handler;
+        lmk_free((void *)sfh->filename);
+        sfh->filename = lmk_strdup(filename);
     }
     pthread_mutex_unlock(&handler->lock);
 }

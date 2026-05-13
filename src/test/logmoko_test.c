@@ -1,7 +1,39 @@
 #include <stdlib.h>
 #include <pthread.h>
+#include <unistd.h>
 #include "logmoko.h"
 #include "testmoko.h"
+
+static void remove_log_family(const char *path, int max_backups) {
+    char rotated[512];
+    remove(path);
+    for (int i = 1; i <= max_backups; i++) {
+        snprintf(rotated, sizeof(rotated), "%s.%d", path, i);
+        remove(rotated);
+    }
+}
+
+static int count_log_family_lines(const char *path, int max_backups) {
+    char rotated[512];
+    char line[4096];
+    int lines = 0;
+
+    for (int i = 0; i <= max_backups; i++) {
+        const char *candidate = path;
+        if (i > 0) {
+            snprintf(rotated, sizeof(rotated), "%s.%d", path, i);
+            candidate = rotated;
+        }
+
+        FILE *f = fopen(candidate, "r");
+        if (!f)
+            continue;
+        while (fgets(line, sizeof(line), f))
+            lines++;
+        fclose(f);
+    }
+    return lines;
+}
 
 /* Verify normal creation and destruction of logger 
  *  Verify default log level
@@ -1034,6 +1066,180 @@ TMK_TEST(lmk_test_init_from_file_nonexistent) {
     lmk_destroy();
 }
 
+TMK_TEST(lmk_test_sync_file_log_handler_create) {
+    struct lmk_log_handler *h = lmk_get_sync_file_log_handler("sync-audit", "/tmp/lmk_sync_test.log");
+    TMK_ASSERT_NOT_NULL(h);
+    TMK_ASSERT_EQUAL(LMK_LOG_HANDLER_TYPE_SYNC_FILE, h->type);
+    TMK_ASSERT_EQUAL(1, lmk_get_nr_handlers());
+    remove("/tmp/lmk_sync_test.log");
+    lmk_destroy();
+}
+
+TMK_TEST(lmk_test_sync_file_log_handler_singleton) {
+    struct lmk_log_handler *h1 = lmk_get_sync_file_log_handler("sync-audit", "/tmp/lmk_sync_test.log");
+    struct lmk_log_handler *h2 = lmk_get_sync_file_log_handler("sync-audit", "/tmp/lmk_sync_test.log");
+    TMK_ASSERT_NOT_NULL(h1);
+    TMK_ASSERT_EQUAL_PTRS(h1, h2);
+    TMK_ASSERT_EQUAL(1, lmk_get_nr_handlers());
+    remove("/tmp/lmk_sync_test.log");
+    lmk_destroy();
+}
+
+TMK_TEST(lmk_test_sync_file_log_handler_null_args) {
+    TMK_ASSERT_NULL(lmk_get_sync_file_log_handler(NULL, "/tmp/lmk_sync_test.log"));
+    TMK_ASSERT_NULL(lmk_get_sync_file_log_handler("sync-audit", NULL));
+    TMK_ASSERT_EQUAL(0, lmk_get_nr_handlers());
+    lmk_destroy();
+}
+
+TMK_TEST(lmk_test_sync_file_log_handler_defaults) {
+    struct lmk_log_handler *h = lmk_get_sync_file_log_handler("sync-audit", "/tmp/lmk_sync_test.log");
+    TMK_ASSERT_NOT_NULL(h);
+    struct lmk_sync_file_log_handler *sfh = (struct lmk_sync_file_log_handler *)h;
+    TMK_ASSERT_EQUAL(LMK_DEFAULT_MAX_FILE_SIZE, sfh->max_file_size);
+    TMK_ASSERT_EQUAL(LMK_DEFAULT_MAX_BACKUP_FILES, sfh->max_backup_files);
+    remove("/tmp/lmk_sync_test.log");
+    lmk_destroy();
+}
+
+TMK_TEST(lmk_test_set_log_rotation_sync_file) {
+    struct lmk_log_handler *h = lmk_get_sync_file_log_handler("sync-audit", "/tmp/lmk_sync_test.log");
+    TMK_ASSERT_NOT_NULL(h);
+    lmk_set_log_rotation(h, 1L * 1024 * 1024, 5);
+    struct lmk_sync_file_log_handler *sfh = (struct lmk_sync_file_log_handler *)h;
+    TMK_ASSERT_EQUAL(1L * 1024 * 1024, sfh->max_file_size);
+    TMK_ASSERT_EQUAL(5, sfh->max_backup_files);
+    remove("/tmp/lmk_sync_test.log");
+    lmk_destroy();
+}
+
+TMK_TEST(lmk_test_sync_file_log_handler_writes) {
+    const char *path = "/tmp/lmk_sync_write_test.log";
+    remove(path);
+    struct lmk_logger *logger = lmk_get_logger("sync-logger");
+    struct lmk_log_handler *h = lmk_get_sync_file_log_handler("sync-audit", path);
+    TMK_ASSERT_NOT_NULL(h);
+    lmk_attach_log_handler(logger, h);
+    LMK_LOG_INFO(logger, "audit event one");
+    LMK_LOG_WARN(logger, "audit event two");
+    lmk_destroy();
+
+    FILE *f = fopen(path, "r");
+    TMK_ASSERT_NOT_NULL(f);
+    char buf[256];
+    int lines = 0;
+    while (fgets(buf, sizeof(buf), f)) lines++;
+    fclose(f);
+    TMK_ASSERT_EQUAL(2, lines);
+    remove(path);
+}
+
+TMK_TEST(lmk_test_sync_file_buffer_drains_beyond_capacity) {
+    const char *path = "/tmp/lmk_sync_buffer_drain_test.log";
+    remove_log_family(path, 10);
+
+    lmk_get_config()->ring_buffer_size = 8;
+    struct lmk_logger *logger = lmk_get_logger("sync-buffer-logger");
+    struct lmk_log_handler *h = lmk_get_sync_file_log_handler("sync-buffer", path);
+    TMK_ASSERT_NOT_NULL(h);
+    lmk_attach_log_handler(logger, h);
+
+    const int nr_logs = 5000;
+    for (int i = 0; i < nr_logs; i++)
+        LMK_LOG_INFO(logger, "buffered message %d", i);
+
+    TMK_ASSERT_EQUAL(nr_logs, h->nr_log_calls);
+    lmk_destroy();
+    TMK_ASSERT_EQUAL(nr_logs, count_log_family_lines(path, 10));
+    remove_log_family(path, 10);
+}
+
+TMK_TEST(lmk_test_sync_file_buffer_rotation_preserves_lines) {
+    const char *path = "/tmp/lmk_sync_rotation_test.log";
+    const int max_backups = 200;
+    remove_log_family(path, max_backups);
+
+    lmk_get_config()->ring_buffer_size = 16;
+    struct lmk_logger *logger = lmk_get_logger("sync-rotation-logger");
+    struct lmk_log_handler *h = lmk_get_sync_file_log_handler("sync-rotation", path);
+    TMK_ASSERT_NOT_NULL(h);
+    lmk_set_log_rotation(h, 4096, max_backups);
+    lmk_attach_log_handler(logger, h);
+
+    const int nr_logs = 1000;
+    for (int i = 0; i < nr_logs; i++)
+        LMK_LOG_INFO(logger, "rotation preserving message %04d", i);
+
+    TMK_ASSERT_EQUAL(nr_logs, h->nr_log_calls);
+    lmk_destroy();
+    TMK_ASSERT_EQUAL(nr_logs, count_log_family_lines(path, max_backups));
+    remove_log_family(path, max_backups);
+}
+
+TMK_TEST(lmk_test_sync_file_buffer_accounting) {
+    const char *path = "/tmp/lmk_sync_accounting_test.log";
+    remove_log_family(path, 5);
+
+    lmk_get_config()->ring_buffer_size = 4;
+    struct lmk_logger *logger = lmk_get_logger("sync-accounting-logger");
+    struct lmk_log_handler *h = lmk_get_sync_file_log_handler("sync-accounting", path);
+    TMK_ASSERT_NOT_NULL(h);
+    lmk_attach_log_handler(logger, h);
+
+    const int nr_logs = 257;
+    for (int i = 0; i < nr_logs; i++)
+        LMK_LOG_INFO(logger, "accounting message %d", i);
+
+    TMK_ASSERT_EQUAL(nr_logs, h->nr_log_calls);
+    lmk_destroy();
+    TMK_ASSERT_EQUAL(nr_logs, count_log_family_lines(path, 5));
+    remove_log_family(path, 5);
+}
+
+TMK_TEST(lmk_test_init_from_file_sync_file) {
+    const char *cfg_path = "/tmp/logmoko_sync_test.conf";
+    const char *log_path = "/tmp/logmoko_sync_cfg_test.log";
+    remove(log_path);
+    FILE *f = fopen(cfg_path, "w");
+    TMK_ASSERT_NOT_NULL(f);
+    fprintf(f,
+            "[handler:audit]\n"
+            "type             = sync_file\n"
+            "level            = info\n"
+            "filename         = %s\n"
+            "max_file_size    = 1048576\n"
+            "max_backup_files = 3\n"
+            "\n"
+            "[logger:audit-logger]\n"
+            "level    = info\n"
+            "handlers = audit\n",
+            log_path);
+    fclose(f);
+
+    TMK_ASSERT_EQUAL(LMK_E_OK, lmk_init_from_file(cfg_path));
+
+    struct lmk_log_handler *h = lmk_search_log_handler_by_name("audit");
+    TMK_ASSERT_NOT_NULL(h);
+    TMK_ASSERT_EQUAL(LMK_LOG_HANDLER_TYPE_SYNC_FILE, h->type);
+    TMK_ASSERT_EQUAL(LMK_LOG_LEVEL_INFO, lmk_get_handler_log_level(h));
+    struct lmk_sync_file_log_handler *sfh = (struct lmk_sync_file_log_handler *)h;
+    TMK_ASSERT_EQUAL(1048576L, sfh->max_file_size);
+    TMK_ASSERT_EQUAL(3, sfh->max_backup_files);
+
+    struct lmk_logger *logger = lmk_search_logger_by_name("audit-logger");
+    TMK_ASSERT_NOT_NULL(logger);
+    LMK_LOG_INFO(logger, "config-driven audit event");
+    lmk_destroy();
+
+    FILE *lf = fopen(log_path, "r");
+    TMK_ASSERT_NOT_NULL(lf);
+    char buf[256];
+    TMK_ASSERT_NOT_NULL(fgets(buf, sizeof(buf), lf));
+    fclose(lf);
+    remove(cfg_path);
+    remove(log_path);
+}
+
 TMK_TEST(lmk_test_file_write_perf) {
     struct lmk_logger *logger = lmk_get_logger("logger");
     struct lmk_log_handler *flh = lmk_get_file_log_handler("file-handler", "perf-test.log");
@@ -1104,6 +1310,16 @@ TMK_TEST_FUNCTION_TABLE_START(test_function_table)
     TMK_INCLUDE_TEST(lmk_test_get_config)
     TMK_INCLUDE_TEST(lmk_test_init_from_file)
     TMK_INCLUDE_TEST(lmk_test_init_from_file_nonexistent)
+    TMK_INCLUDE_TEST(lmk_test_sync_file_log_handler_create)
+    TMK_INCLUDE_TEST(lmk_test_sync_file_log_handler_singleton)
+    TMK_INCLUDE_TEST(lmk_test_sync_file_log_handler_null_args)
+    TMK_INCLUDE_TEST(lmk_test_sync_file_log_handler_defaults)
+    TMK_INCLUDE_TEST(lmk_test_set_log_rotation_sync_file)
+    TMK_INCLUDE_TEST(lmk_test_sync_file_log_handler_writes)
+    TMK_INCLUDE_TEST(lmk_test_sync_file_buffer_drains_beyond_capacity)
+    TMK_INCLUDE_TEST(lmk_test_sync_file_buffer_rotation_preserves_lines)
+    TMK_INCLUDE_TEST(lmk_test_sync_file_buffer_accounting)
+    TMK_INCLUDE_TEST(lmk_test_init_from_file_sync_file)
     TMK_INCLUDE_TEST(lmk_test_file_write_perf)
 TMK_TEST_FUNCTION_TABLE_END
 
@@ -1123,4 +1339,3 @@ int main(int argc, char **argv) {
     tmk_run_tests(test_function_table, tmk_setup, tmk_teardown);
     return EXIT_SUCCESS;
 }
-

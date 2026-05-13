@@ -1,4 +1,5 @@
 #include "logmoko.h"
+#include <unistd.h>
 
 #define ANSI_RESET  "\033[0m"
 #define ANSI_GRAY   "\033[2;37m"
@@ -30,14 +31,15 @@ static inline void lmk_console_maybe_wake(struct lmk_console_log_handler *clh) {
 static void *lmk_console_log_handler_thread_routine(void *arg) {
     struct lmk_console_log_handler *clh = (struct lmk_console_log_handler *)arg;
     char out[LMK_LOG_MSG_MAX_SIZE + 512];
+    int use_color = isatty(STDOUT_FILENO);
 
     while (1) {
         struct lmk_ring_slot *slot;
         while ((slot = lmk_ring_peek_slot(clh->ring_buffer, clh->tail, clh->ring_mask))) {
             lmk_format_log_line(&clh->base, out, sizeof(out), &slot->req);
-            fputs(lmk_console_level_color(slot->req.log_level), stdout);
+            if (use_color) fputs(lmk_console_level_color(slot->req.log_level), stdout);
             fputs(out, stdout);
-            fputs(ANSI_RESET, stdout);
+            if (use_color) fputs(ANSI_RESET, stdout);
             lmk_ring_consume(clh->ring_buffer, &clh->tail, clh->ring_mask);
         }
         fflush(stdout);

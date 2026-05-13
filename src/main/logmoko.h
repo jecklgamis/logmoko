@@ -40,7 +40,8 @@ enum {
     LMK_LOG_HANDLER_TYPE_CONSOLE = 0,
     LMK_LOG_HANDLER_TYPE_FILE,
     LMK_LOG_HANDLER_TYPE_SOCKET,
-    LMK_LOG_HANDLER_TYPE_SYSLOG
+    LMK_LOG_HANDLER_TYPE_SYSLOG,
+    LMK_LOG_HANDLER_TYPE_SYNC_FILE
 };
 
 struct lmk_log_record {
@@ -250,6 +251,34 @@ struct lmk_syslog_log_handler {
     _Atomic unsigned long dropped;
 };
 
+struct lmk_sync_file_log_slot {
+    int log_level;
+    int line_no;
+    char *file_name;
+    char *handler_name;
+    size_t data_len;
+    char data[LMK_LOG_MSG_MAX_SIZE];
+};
+
+struct lmk_sync_file_log_handler {
+    struct lmk_log_handler base;
+    const char *filename;
+    FILE *log_fp;
+    struct lmk_sync_file_log_slot *buffer;
+    size_t buffer_size;
+    size_t head;
+    size_t tail;
+    size_t count;
+    pthread_t thread;
+    int running;
+    pthread_mutex_t queue_lock;
+    pthread_cond_t  not_empty;
+    pthread_cond_t  not_full;
+    long max_file_size;
+    int  max_backup_files;
+    long current_file_size;
+};
+
 #define LMK_LOG_MAX_LOGGER_NAME_SZ 64
 
 /* log_buff and log_lock removed — callers use a thread-local buffer. */
@@ -298,6 +327,7 @@ extern LMK_API struct lmk_log_handler *lmk_get_console_log_handler();
 extern LMK_API struct lmk_log_handler *lmk_get_file_log_handler(const char *name, const char *filename);
 extern LMK_API struct lmk_log_handler *lmk_get_socket_log_handler(const char *name);
 extern LMK_API struct lmk_log_handler *lmk_get_syslog_log_handler(const char *name, const char *ident, int facility);
+extern LMK_API struct lmk_log_handler *lmk_get_sync_file_log_handler(const char *name, const char *filename);
 
 extern LMK_API void lmk_set_log_filename(struct lmk_log_handler *handler, const char *filename);
 extern LMK_API void lmk_set_log_rotation(struct lmk_log_handler *handler, long max_file_size, int max_backup_files);

@@ -134,6 +134,8 @@ static int lmk_cfg_parse_file(const char *path, struct lmk_cfg *cfg) {
                     cur_handler->type = LMK_LOG_HANDLER_TYPE_SOCKET;
                 else if (!strcasecmp(val, "syslog"))
                     cur_handler->type = LMK_LOG_HANDLER_TYPE_SYSLOG;
+                else if (!strcasecmp(val, "sync_file"))
+                    cur_handler->type = LMK_LOG_HANDLER_TYPE_SYNC_FILE;
             } else if (!strcasecmp(key, "level")) {
                 cur_handler->level = lmk_cfg_parse_level(val);
             } else if (!strcasecmp(key, "filename")) {
@@ -211,6 +213,13 @@ static void lmk_cfg_apply(const struct lmk_cfg *cfg) {
             extern int lmk_parse_syslog_facility(const char *s);
             int facility = lmk_parse_syslog_facility(ch->facility[0] ? ch->facility : NULL);
             handler = lmk_get_syslog_log_handler(ch->name, ch->ident[0] ? ch->ident : NULL, facility);
+        } else if (ch->type == LMK_LOG_HANDLER_TYPE_SYNC_FILE) {
+            handler = lmk_get_sync_file_log_handler(ch->name, ch->filename[0] ? ch->filename : NULL);
+            if (handler && (ch->max_file_size > 0 || ch->max_backup_files > 0)) {
+                long sz = ch->max_file_size > 0 ? ch->max_file_size : LMK_DEFAULT_MAX_FILE_SIZE;
+                int  nb = ch->max_backup_files > 0 ? ch->max_backup_files : LMK_DEFAULT_MAX_BACKUP_FILES;
+                lmk_set_log_rotation(handler, sz, nb);
+            }
         } else if (ch->type == LMK_LOG_HANDLER_TYPE_SOCKET) {
             handler = lmk_get_socket_log_handler(ch->name);
             if (handler) {
